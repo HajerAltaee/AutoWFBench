@@ -1,0 +1,279 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "challenge": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hashes": {
+          "type": "object",
+          "properties": {
+            "definition": {
+              "type": "string"
+            },
+            "environment": {
+              "type": "string"
+            },
+            "scorecard": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "definition",
+            "environment",
+            "scorecard"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "hashes"
+      ],
+      "additionalProperties": false
+    },
+    "solution": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifest_digest": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "version",
+        "runtime",
+        "manifest_digest"
+      ],
+      "additionalProperties": false
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "started_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "finished_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "termination_reason": {
+      "enum": [
+        "completed",
+        "solution_failed",
+        "timeout",
+        "protocol_error",
+        "engine_error"
+      ]
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "enum": [
+              "engine",
+              "environment",
+              "candidate",
+              "verification"
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "timestamp",
+          "kind",
+          "data"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "snapshots": {
+      "type": "object",
+      "properties": {
+        "initial": {
+          "type": "object"
+        },
+        "final": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "initial",
+        "final"
+      ],
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "object"
+    },
+    "submission": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SolutionSubmission"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "challenge",
+    "solution",
+    "seed",
+    "started_at",
+    "finished_at",
+    "duration_seconds",
+    "termination_reason",
+    "events",
+    "snapshots",
+    "checks",
+    "submission"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "SolutionSubmission": {
+      "type": "object",
+      "properties": {
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "failed"
+          ]
+        },
+        "final_answer": {
+          "type": "string"
+        },
+        "artifacts": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "media_type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "content": {
+                "type": "string",
+                "maxLength": 200000
+              }
+            },
+            "required": [
+              "name",
+              "media_type",
+              "content"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "trace": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1
+              },
+              "data": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "timestamp",
+              "kind",
+              "data"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "protocol_version",
+        "run_id",
+        "status",
+        "final_answer",
+        "artifacts",
+        "trace"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

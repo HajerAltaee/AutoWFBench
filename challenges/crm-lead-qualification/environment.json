@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "implementation": "crm",
+  "isolation": "fresh-process-per-run",
+  "failure_injection": {
+    "crm_update_failures": 1
+  },
+  "fixtures": {
+    "lead_id": "LEAD-1007",
+    "company": "Crescent Retail Group",
+    "contact": "customer@crescent.example",
+    "status": "New",
+    "budget_aed": 180000,
+    "timeline_weeks": 12,
+    "volume": 18000,
+    "languages": [
+      "Arabic",
+      "English"
+    ],
+    "crm": "Salesforce",
+    "channel": "WhatsApp",
+    "human_handoff": true
+  }
+}

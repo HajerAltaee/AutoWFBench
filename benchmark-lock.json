@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "policy": "Benchmark-owner baseline. WF-specialists must not modify these files or this lock. Official grading uses a trusted checkout.",
+  "files": {
+    "autowfbench/__init__.py": "65b3e9d5cbde1c22ccd2010596164eb16c1b01e8e026443508cbbaf3a87c18a3",
+    "autowfbench/__main__.py": "ef7b074e4346bb1bfb005dba8df0553bf45b542064d35cd42d43c15f69e2cf56",
+    "autowfbench/common.py": "06be6e64898ac5ef0fb792c0990caabf1fddd8a1a42bae6b138f9ece8d02cdfd",
+    "autowfbench/contracts.py": "d0b7b805a5d65a7cc4570f76c2b47975b5a4ddd080c5a8882edd9804af5cab81",
+    "autowfbench/engine.py": "9bb6ebac4ae1a0d1fb2818f33755c0cb3161a86459c4e5c925a01eeb6060a2c4",
+    "autowfbench/environment.py": "19d765033321bbee408a62bab8ff195145a5caffc435afc699d87d1e1f0a21b9",
+    "autowfbench/example_solution.py": "a0fed709bfc9035645e093c8e3fbae50ac2cb93f9a37821edba9391b405e7c53",
+    "autowfbench/judge.py": "22dfb2aec2356e475e2eb5e83971d1f25e3d60d29df852224fa1ca0b92be0731",
+    "autowfbench/scoring.py": "769e6dc6e45430162a5fe54d5095192bc836ccb7f1dd98beb9078d9580bfb3a5",
+    "autowfbench/server.py": "c9a73b73190264f403bbe1d2d713248d9dc995e4657193230f5eb72646170495",
+    "challenges/crm-lead-qualification/definition.json": "a3bbcf8ec9dca2178d2c654c7c8893136f91c67d91290a5a48af1b9a8232fe66",
+    "challenges/crm-lead-qualification/environment.json": "add4eed574ad12637ea6485d340ca8a43ca166171ffb4120a1e0cce09e1cf8ef",
+    "challenges/crm-lead-qualification/scorecard.json": "b23118949cfe25dd1b6fb1ea4d19552426ca04ba6bc086e03dc897e9464a97d3",
+    "challenges/production-checkout-recovery/definition.json": "3ad7c4c90cbeafeecc48c0997149dc430236ea5e101abde473be7da1ac878ddd",
+    "challenges/production-checkout-recovery/environment.json": "967473d2248a43d62df1491710aaeee0078c6a3b9ddb497ec7a71c8b68c6b12f",
+    "challenges/production-checkout-recovery/scorecard.json": "dfe54f190a09f62eba2e850c47123c61f820a8be4d05119a7b69ce13577fb9fd",
+    "schemas/judge-response.schema.json": "11a39c3d3bd48a6fb6ff243ff4d805869f14584650488d20c6150b09d87e26fc",
+    "schemas/run-log.schema.json": "f18460b00e37263d2764b9cb4ac1454c32c40305b1ea49ef96b683ef4baea098",
+    "schemas/scorecard.schema.json": "a8f780f4a6e1b14a3c29958c44ea48473844f27677f5497f6cd6f5bef16d73d6",
+    "schemas/solution.schema.json": "1e2a40ba34c14efb35479bee8c6cec291591c3156faf66c04815ee6f2f41c716",
+    "schemas/submission.schema.json": "dfe695c53aff9032fb5e9c638a5c4d6ab676c553d927fad557581ae925e18671"
+  }
+}
