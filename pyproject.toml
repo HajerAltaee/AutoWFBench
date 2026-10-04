@@ -10,10 +10,10 @@ requires-python = ">=3.11"
 dependencies = ["fastjsonschema>=2.21,<3"]
 
 [project.scripts]
-autowfbench = "autowfbench.__main__:main"
+autowfbench = "autowfbench.interfaces.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["autowfbench*"]
 
 [tool.setuptools.package-data]
-autowfbench = ["web/*"]
+autowfbench = ["interfaces/web/*.html", "interfaces/web/*.css", "interfaces/web/*.js"]

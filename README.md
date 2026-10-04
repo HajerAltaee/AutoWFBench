@@ -71,7 +71,7 @@ API handles both challenges. Use endpoint `http://127.0.0.1:9201`, runtime
 ```bash
 export AWB_JUDGE_TOKEN='replace-with-a-random-private-token'
 python -m autowfbench run crm-lead-qualification \
-  examples/solutions/crm-reference.json \
+  benchmark/examples/solutions/crm-reference.json \
   --judge-url http://127.0.0.1:9100
 ```
 
@@ -92,7 +92,7 @@ without rerunning the solution; authenticate with the engine control token.
 
 Each challenge directory contains **exactly the three conceptual modules**:
 `definition.json`, `environment.json`, `scorecard.json`. The simulator implementation
-is in `autowfbench/environment.py`; its digest is included in the frozen environment
+is in `autowfbench/runtime/environment.py`; its digest is included in the frozen environment
 package. These are fresh implementations inspired by the reviewed submissions,
 not copied third-party source code.
 
@@ -103,23 +103,30 @@ implement a container/VM environment adapter with protected external verifiers.
 
 ## Contracts and specialist handoff
 
-- [Architecture and ownership](docs/architecture.md)
-- [Solution API and tool contract](docs/solution-api.md)
-- [Run-log specification: what you submit vs what the engine records](docs/run-log-spec.md)
-- [Judge and scorecard contract](docs/judging.md)
-- [Operating limits and deployment](docs/operations.md)
-- [WF-specialist assignment](assignment/README.md)
-- [Submission checklist](assignment/submission-checklist.md)
-- [CRM benchmark feedback](feedbacks/crm-lead-qualification.md)
-- [Production benchmark feedback](feedbacks/production-checkout-recovery.md)
-- [JSON Schemas](schemas/)
+- [Architecture and ownership](development/docs/reference/architecture.md)
+- [Solution API and tool contract](development/docs/reference/solution-api.md)
+- [Run-log specification: what you submit vs what the engine records](development/docs/reference/run-log-spec.md)
+- [Judge and scorecard contract](development/docs/reference/judging.md)
+- [Operating limits and deployment](development/docs/reference/operations.md)
+- [WF-specialist assignment](development/docs/assignment/README.md)
+- [Submission checklist](development/docs/assignment/submission-checklist.md)
+- [CRM benchmark feedback](development/docs/feedback/crm-lead-qualification.md)
+- [Production benchmark feedback](development/docs/feedback/production-checkout-recovery.md)
+- [JSON Schemas](benchmark/schemas)
+
+## Repository organization
+
+Three responsibility groups organize the checkout: `autowfbench/` (application),
+`benchmark/` (specifications and examples), and `development/` (docs, tests, tools).
+See the [rTernarity layout and reduction review](development/docs/reference/refactoring.md)
+for the recursive structure, measurements, migration notes, and validation.
 
 ## Validation
 
 ```bash
-python -m unittest discover -s tests -v
-python -m autowfbench validate-submission examples/submission.json
-python scripts/verify_lock.py
+python -m unittest discover -s development/tests -v
+python -m autowfbench validate-submission benchmark/examples/submission.json
+python development/tools/verify_lock.py
 ```
 
 Tests include actual HTTP solution execution and separate environment processes,
