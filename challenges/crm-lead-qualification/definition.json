@@ -1,0 +1,21 @@
+{
+  "id": "crm-lead-qualification",
+  "version": "1.0.0",
+  "name": "CRM Lead Qualification",
+  "task": "Handle the inbound customer-support automation inquiry. Gather missing qualification information, consult service and policy evidence, assess fit, update the existing CRM lead accurately, create the appropriate follow-up, and send an appropriate customer response. Recover from transient failures. Verify resulting state before reporting completion. Avoid unsupported commitments.",
+  "limits": {
+    "wall_clock_seconds": 120,
+    "tool_calls": 40
+  },
+  "capabilities": [
+    "inquiry.read",
+    "documents.read",
+    "research.read",
+    "customer.ask",
+    "crm.read",
+    "crm.update",
+    "followup.create",
+    "customer.send"
+  ],
+  "completion": "Return a final explanation of what was accomplished and any remaining work. All business actions must use the provided environment API."
+}
