@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from autowfbench.composer.models import STRATEGIES, validate_candidate
+from autowfbench.composer.models import validate_candidate
 from autowfbench.composer.principles import PRINCIPLES
 from autowfbench.composer.tool_contracts import contracts_for
 from autowfbench.core.common import save_json
@@ -17,62 +17,18 @@ from autowfbench.core.common import save_json
 CANDIDATE_OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
-        "schema_version": {"const": "1.0"},
-        "candidate_id": {"type": "string"},
-        "challenge_id": {"type": "string"},
-        "version": {"type": "string"},
-        "strategy": {"enum": list(STRATEGIES)},
-        "hypothesis": {"type": "string"},
-        "steps": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {"type": "string"},
-                    "kind": {"enum": ["tool", "local"]},
-                    "operation": {"type": "string"},
-                    "arguments": {"type": "object"},
-                    "save_as": {"type": "string"},
-                    "require_ok": {"type": "boolean"},
-                    "when": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {"path": {"type": "string"}, "equals": {}},
-                            "required": ["path", "equals"],
-                            "additionalProperties": False,
-                        },
-                    },
-                },
-                "required": ["id", "kind", "operation", "arguments", "save_as", "require_ok", "when"],
-                "additionalProperties": False,
-            },
-        },
-        "final": {
-            "type": "object",
-            "properties": {
-                "answer": {"type": "string"},
-                "artifacts": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {"name": {"type": "string"}, "media_type": {"type": "string"}, "content": {"type": "string"}},
-                        "required": ["name", "media_type", "content"],
-                        "additionalProperties": False,
-                    },
-                },
-            },
-            "required": ["answer", "artifacts"],
-            "additionalProperties": False,
-        },
+        # Encoding the candidate as a string keeps this output schema strict
+        # while allowing public tools to have challenge-specific argument keys.
+        "candidate_json": {"type": "string"},
     },
-    "required": ["schema_version", "candidate_id", "challenge_id", "version", "strategy", "hypothesis", "steps", "final"],
+    "required": ["candidate_json"],
     "additionalProperties": False,
     "$schema": "http://json-schema.org/draft-07/schema#",
 }
 
 
-FORMAT_GUIDE = """Produce one declarative candidate JSON object.
+FORMAT_GUIDE = """Return an object with exactly one field, `candidate_json`. Its
+value must be a JSON-encoded string containing one declarative candidate object.
 
 Each step has exactly: id, kind, operation, arguments, save_as, require_ok, when.
 - kind=tool invokes one public capability.
@@ -181,7 +137,10 @@ class CodexGenerator:
             completed = subprocess.run(command, input=prompt, text=True, cwd=root, env=env, capture_output=True, timeout=self.timeout, shell=False)
             if completed.returncode:
                 raise RuntimeError(f"Composer model exited {completed.returncode}: {completed.stderr[-1000:]}")
-            candidate = json.loads(output.read_text(encoding="utf-8"))
+            envelope = json.loads(output.read_text(encoding="utf-8"))
+            if set(envelope) != {"candidate_json"} or not isinstance(envelope["candidate_json"], str):
+                raise ValueError("Composer model returned an invalid output envelope")
+            candidate = json.loads(envelope["candidate_json"])
         validate_candidate(candidate, expected_challenge=challenge_id, expected_id=candidate_id)
         if expected_strategy and candidate["strategy"] != expected_strategy:
             raise ValueError(f"Expected strategy {expected_strategy}")
