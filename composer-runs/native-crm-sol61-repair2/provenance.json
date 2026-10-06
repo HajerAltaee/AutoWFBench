@@ -1,0 +1,67 @@
+{
+  "generator": "codex",
+  "model": "gpt-6.1-sol",
+  "attempt_limit": 3,
+  "attempts_used": 3,
+  "manually_edited": false,
+  "workflow_digest": "057c8950d224cb6e611a7859a87a4f7bba0e8191616a19917eb27fd43b2f687b",
+  "n8n_version": "2.42.3",
+  "n8n_image": "n8nio/n8n@sha256:240eaa2a3d491adac5817aa4c3f1c521bb18ec79f6e448517158d5220ee0f37b",
+  "challenge": {
+    "id": "crm-lead-qualification",
+    "version": "1.0.0",
+    "name": "CRM Lead Qualification",
+    "task": "Handle the inbound customer-support automation inquiry. Gather missing qualification information, consult service and policy evidence, assess fit, update the existing CRM lead accurately, create the appropriate follow-up, and send an appropriate customer response. Recover from transient failures. Verify resulting state before reporting completion. Avoid unsupported commitments.",
+    "limits": {
+      "wall_clock_seconds": 120,
+      "tool_calls": 40
+    },
+    "capabilities": [
+      "inquiry.read",
+      "documents.read",
+      "research.read",
+      "customer.ask",
+      "crm.read",
+      "crm.update",
+      "followup.create",
+      "customer.send"
+    ],
+    "completion": "Return a final explanation of what was accomplished and any remaining work. All business actions must use the provided environment API."
+  },
+  "attempt_records": [
+    {
+      "attempt": 1,
+      "created_at": "2026-10-06T16:05:11.629070+00:00",
+      "valid": false,
+      "errors": [
+        {
+          "code": "N8N_EXECUTION_REJECTED",
+          "path": "$",
+          "message": "data.artifacts[0] must contain ['content', 'media_type', 'name'] properties"
+        }
+      ],
+      "workflow_digest": "fb649eb97ba3f4bada41d86c777accfeb28c562ca423dbf913aa50e27d9f9205"
+    },
+    {
+      "attempt": 2,
+      "created_at": "2026-10-06T16:08:04.173162+00:00",
+      "valid": false,
+      "errors": [
+        {
+          "code": "N8N_EXECUTION_REJECTED",
+          "path": "$",
+          "message": "data.trace[0] must contain ['data', 'kind', 'timestamp'] properties"
+        }
+      ],
+      "workflow_digest": "3f9e584e6bc191a9ccea71a49d70531a7b66f4add4e43db6dc166f17448a3fa1"
+    },
+    {
+      "attempt": 3,
+      "created_at": "2026-10-06T16:11:11.284089+00:00",
+      "valid": true,
+      "errors": [],
+      "workflow_digest": "057c8950d224cb6e611a7859a87a4f7bba0e8191616a19917eb27fd43b2f687b"
+    }
+  ],
+  "source_workflow_digest": "70c7d5a4077d8e5b9b48c275d24b1a3f46f958e42653eeffe1120b1a0c292450"
+}

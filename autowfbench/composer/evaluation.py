@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from autowfbench.composer.candidate_runtime import handler_for
+from autowfbench.composer.n8n_runtime import N8nCliRuntime, handler_for as n8n_handler_for
 from autowfbench.composer.models import NumericObservation, validate_candidate
 from autowfbench.core.common import background_server
 
@@ -28,6 +29,33 @@ class LocalBenchmarkEvaluator:
             run_id = self.engine.submit(self.challenge_id, manifest, seed=seed, background=False)
             # This is the sole projection point. Detailed fields are not returned.
             return NumericObservation.from_engine_result(candidate["candidate_id"], self.engine.read(run_id))
+        finally:
+            server.shutdown()
+            server.server_close()
+
+
+class N8nBenchmarkEvaluator:
+    """Run one validated native n8n artifact against the unchanged benchmark."""
+
+    def __init__(self, engine, challenge_id, workflow_path, runtime=None):
+        self.engine, self.challenge_id = engine, challenge_id
+        self.workflow_path = workflow_path
+        self.runtime = runtime or N8nCliRuntime()
+
+    def evaluate(self, workflow, seed=0):
+        server = background_server(n8n_handler_for(self.workflow_path, self.runtime))
+        try:
+            manifest = {
+                "id": "composer-n8n-" + self.challenge_id[:48],
+                "name": "Composer native n8n workflow",
+                "version": "0.1.0",
+                "endpoint": f"http://127.0.0.1:{server.server_port}",
+                "runtime": "n8n-2.42.3",
+                "description": "Native n8n workflow generated autonomously by Sol6.1",
+                "auth_env": "",
+            }
+            run_id = self.engine.submit(self.challenge_id, manifest, seed=seed, background=False)
+            return NumericObservation.from_engine_result("native-n8n", self.engine.read(run_id))
         finally:
             server.shutdown()
             server.server_close()

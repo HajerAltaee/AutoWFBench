@@ -115,6 +115,41 @@ Candidate schemas reject unexpected fields.
 
 ## Running
 
+### Native n8n generation path
+
+The immediate Composer path generates a native n8n workflow directly from the
+public challenge with `gpt-6.1-sol`. It validates the JSON and supported n8n
+structure, imports it into the pinned n8n 2.42.3 image, and executes it against a
+public-contract stub before allowing benchmark execution. Validation failures may
+be returned to the model for a bounded repair; benchmark criteria, judge output,
+protected checks, and scorecards are never included.
+
+The fixed Solution API adapter contains only benchmark protocol and process
+plumbing. It supplies the run-scoped public environment URL and token to the
+generated workflow and runs the workflow in the same Linux/Docker topology used
+by benchmark solutions. Task-specific decisions and API calls remain in the
+generated n8n workflow.
+
+```bash
+python -m autowfbench.composer n8n-generate crm-lead-qualification \
+  --data-dir composer-runs/native-crm
+python -m autowfbench.composer n8n-validate \
+  composer-runs/native-crm/workflow.json
+python -m autowfbench.composer n8n-benchmark crm-lead-qualification \
+  composer-runs/native-crm/workflow.json
+```
+
+The preserved CRM experiment is under
+`composer-runs/native-crm-sol61-repair2/`. Its final workflow was generated and
+repaired without manual workflow edits. Attempts one and two failed deterministic
+execution-contract validation; attempt three passed static validation, pinned n8n
+import, public-stub execution, and submission-schema validation. The unchanged
+artifact digest is
+`057c8950d224cb6e611a7859a87a4f7bba0e8191616a19917eb27fd43b2f687b`.
+The single completed benchmark run scored 2.33/10 with 11 tool calls in 20.3348
+seconds. This demonstrates autonomous native configuration generation and valid
+execution, not successful task completion or optimization.
+
 Run all tests:
 
 ```bash

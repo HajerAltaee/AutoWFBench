@@ -8,6 +8,7 @@ from pathlib import Path
 from autowfbench.composer.candidate_runtime import local_step, resolve
 from autowfbench.composer.generator import child_prompt, initial_prompt
 from autowfbench.composer.models import NumericObservation, structural_complexity, validate_candidate
+from autowfbench.composer.n8n_validation import parse_workflow_json, validate_n8n_workflow
 from autowfbench.composer.search import ComposerSearch, select
 from autowfbench.composer.simulation import SIMULATED_CHALLENGE, SimulatedEvaluator, SimulatedGenerator
 
@@ -28,7 +29,53 @@ def candidate(candidate_id="c000", strategy="initial", operations=("alpha.read",
     }
 
 
+def native_workflow():
+    return {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "name": "Generated test workflow",
+        "nodes": [
+            {"id": "11111111-1111-4111-8111-111111111111", "name": "Start", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0], "parameters": {}},
+            {
+                "id": "22222222-2222-4222-8222-222222222222", "name": "Read inquiry",
+                "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [240, 0],
+                "parameters": {
+                    "method": "POST", "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+                    "sendHeaders": True, "headerParameters": {"parameters": [{"name": "Authorization", "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"}]},
+                    "sendBody": True, "specifyBody": "json", "jsonBody": "={{ { operation: 'inquiry.read', arguments: {} } }}", "options": {},
+                },
+            },
+            {
+                "id": "33333333-3333-4333-8333-333333333333", "name": "Build Submission",
+                "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [480, 0],
+                "parameters": {"mode": "raw", "jsonOutput": "={{ { protocol_version: '1.0', run_id: $env.AWB_RUN_ID, status: 'completed', final_answer: $('Read inquiry').first().json.ok, artifacts: [], trace: [] } }}", "options": {}},
+            },
+        ],
+        "connections": {
+            "Start": {"main": [[{"node": "Read inquiry", "type": "main", "index": 0}]]},
+            "Read inquiry": {"main": [[{"node": "Build Submission", "type": "main", "index": 0}]]},
+        },
+        "settings": {"executionOrder": "v1"},
+        "active": False,
+    }
+
+
 class ComposerTests(unittest.TestCase):
+    def test_native_n8n_validation_accepts_supported_connected_workflow(self):
+        challenge = {"capabilities": ["inquiry.read"]}
+        self.assertEqual(validate_n8n_workflow(native_workflow(), challenge), [])
+
+    def test_native_n8n_validation_rejects_dangling_disallowed_and_secret_config(self):
+        value = native_workflow()
+        value["connections"]["Start"]["main"][0][0]["node"] = "Missing"
+        value["nodes"][1]["type"] = "n8n-nodes-base.executeCommand"
+        value["nodes"][1]["parameters"]["apiKey"] = "literal-secret"
+        codes = {issue.code for issue in validate_n8n_workflow(value, {"capabilities": ["inquiry.read"]})}
+        self.assertTrue({"UNKNOWN_CONNECTION_TARGET", "DISALLOWED_NODE_TYPE", "EMBEDDED_SECRET"} <= codes)
+
+    def test_native_n8n_json_parser_rejects_duplicate_keys(self):
+        with self.assertRaises(ValueError):
+            parse_workflow_json('{"name":"one","name":"two"}')
+
     def test_candidate_contract_is_strict_and_complexity_is_candidate_owned(self):
         value = candidate(operations=("alpha.read", "beta.write"))
         self.assertIs(validate_candidate(value, "simulated-task", "c000"), value)

@@ -1,0 +1,13 @@
+{
+  "run_id": "run-f28cdf8803cf45dfa563100bb9df7d1e",
+  "challenge_id": "crm-lead-qualification",
+  "status": "complete",
+  "score_0_10": 2.33,
+  "tool_calls": 11,
+  "duration_seconds": 20.3348,
+  "seed": 0,
+  "termination_reason": "completed",
+  "judge_mode": "codex",
+  "judge_model": "gpt-6-astra",
+  "workflow_digest": "057c8950d224cb6e611a7859a87a4f7bba0e8191616a19917eb27fd43b2f687b"
+}

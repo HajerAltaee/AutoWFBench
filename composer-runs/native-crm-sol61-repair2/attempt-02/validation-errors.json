@@ -1,0 +1,7 @@
+[
+  {
+    "code": "N8N_EXECUTION_REJECTED",
+    "path": "$",
+    "message": "data.trace[0] must contain ['data', 'kind', 'timestamp'] properties"
+  }
+]
