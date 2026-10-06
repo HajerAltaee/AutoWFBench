@@ -222,3 +222,4 @@ __marimo__/
 # Local benchmark executions and secrets
 runs/
 .work/
+composer-runs/
