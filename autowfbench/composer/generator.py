@@ -30,6 +30,13 @@ CANDIDATE_OUTPUT_SCHEMA = {
 FORMAT_GUIDE = """Return an object with exactly one field, `candidate_json`. Its
 value must be a JSON-encoded string containing one declarative candidate object.
 
+The decoded candidate must have exactly this top-level shape (replace the
+placeholders with task-specific values):
+{"schema_version":"1.0","candidate_id":"c000","challenge_id":"challenge-id",
+"version":"0.1.0","strategy":"initial","hypothesis":"...","steps":[],
+"final":{"answer":"...","artifacts":[]}}
+Do not use `final_answer` or omit any of these fields.
+
 Each step has exactly: id, kind, operation, arguments, save_as, require_ok, when.
 - kind=tool invokes one public capability.
 - kind=local permits only set or regex_extract.
@@ -111,7 +118,7 @@ def child_prompt(challenge, candidate_id, parent, history):
 class CodexGenerator:
     """Run an isolated Codex generation session in a Composer-owned workspace."""
 
-    def __init__(self, model, workspace, binary=None, timeout=180):
+    def __init__(self, model, workspace, binary=None, timeout=180, attempts=3):
         if not model:
             raise ValueError("Pin a Composer model")
         self.model = model
@@ -121,30 +128,44 @@ class CodexGenerator:
         if not self.binary:
             raise ValueError("Codex CLI not found")
         self.timeout = timeout
+        self.attempts = attempts
 
     def _generate(self, prompt, challenge_id, candidate_id, expected_strategy=None):
-        with tempfile.TemporaryDirectory(prefix="generation-", dir=self.workspace) as directory:
-            root = Path(directory)
-            schema, output = root / "candidate.schema.json", root / "candidate.json"
-            save_json(schema, CANDIDATE_OUTPUT_SCHEMA)
-            (root / "prompt.txt").write_text(prompt, encoding="utf-8")
-            command = [
-                self.binary, "exec", "--model", self.model, "--sandbox", "read-only",
-                "--skip-git-repo-check", "--ephemeral", "--output-schema", str(schema),
-                "-o", str(output), "-",
-            ]
-            env = {k: v for k, v in os.environ.items() if not k.startswith("AWB_")}
-            completed = subprocess.run(command, input=prompt, text=True, cwd=root, env=env, capture_output=True, timeout=self.timeout, shell=False)
-            if completed.returncode:
-                raise RuntimeError(f"Composer model exited {completed.returncode}: {completed.stderr[-1000:]}")
-            envelope = json.loads(output.read_text(encoding="utf-8"))
-            if set(envelope) != {"candidate_json"} or not isinstance(envelope["candidate_json"], str):
-                raise ValueError("Composer model returned an invalid output envelope")
-            candidate = json.loads(envelope["candidate_json"])
-        validate_candidate(candidate, expected_challenge=challenge_id, expected_id=candidate_id)
-        if expected_strategy and candidate["strategy"] != expected_strategy:
-            raise ValueError(f"Expected strategy {expected_strategy}")
-        return candidate
+        feedback = ""
+        last_error = None
+        for attempt in range(1, self.attempts + 1):
+            with tempfile.TemporaryDirectory(prefix="generation-", dir=self.workspace) as directory:
+                root = Path(directory)
+                schema, output = root / "candidate.schema.json", root / "candidate.json"
+                save_json(schema, CANDIDATE_OUTPUT_SCHEMA)
+                request = prompt + feedback
+                (root / "prompt.txt").write_text(request, encoding="utf-8")
+                command = [
+                    self.binary, "exec", "--model", self.model, "--sandbox", "read-only",
+                    "--skip-git-repo-check", "--ephemeral", "--output-schema", str(schema),
+                    "-o", str(output), "-",
+                ]
+                env = {k: v for k, v in os.environ.items() if not k.startswith("AWB_")}
+                completed = subprocess.run(command, input=request, text=True, cwd=root, env=env, capture_output=True, timeout=self.timeout, shell=False)
+                if completed.returncode:
+                    raise RuntimeError(f"Composer model exited {completed.returncode}: {completed.stderr[-1000:]}")
+                try:
+                    envelope = json.loads(output.read_text(encoding="utf-8"))
+                    if set(envelope) != {"candidate_json"} or not isinstance(envelope["candidate_json"], str):
+                        raise ValueError("Composer model returned an invalid output envelope")
+                    candidate = json.loads(envelope["candidate_json"])
+                    validate_candidate(candidate, expected_challenge=challenge_id, expected_id=candidate_id)
+                    if expected_strategy and candidate["strategy"] != expected_strategy:
+                        raise ValueError(f"Expected strategy {expected_strategy}")
+                    return candidate
+                except (json.JSONDecodeError, ValueError) as exc:
+                    last_error = exc
+                    feedback = (
+                        "\n\nVALIDATION_RETRY:\nYour previous candidate was rejected by the public "
+                        f"candidate contract: {exc}. Return a corrected candidate with exactly "
+                        "the required declarative shape. This is format feedback only."
+                    )
+        raise ValueError(f"Composer model failed candidate validation after {self.attempts} attempts: {last_error}")
 
     def initial(self, challenge, candidate_id="c000"):
         return self._generate(initial_prompt(challenge, candidate_id), challenge["id"], candidate_id, "initial")
