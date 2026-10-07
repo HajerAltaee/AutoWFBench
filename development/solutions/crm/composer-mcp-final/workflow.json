@@ -1,0 +1,1107 @@
+[
+  {
+    "updatedAt": "2026-10-07T15:19:26.357Z",
+    "createdAt": "2026-10-07T13:45:40.812Z",
+    "id": "ZIjNzo9Gh4GI1bAv",
+    "name": "AutoWFBench CRM Lead Qualification",
+    "description": "Qualifies an inbound support automation inquiry from public evidence, updates and verifies the existing CRM lead, creates follow-up, sends a cautious response, and emits the completion contract with bounded retry.",
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "bd389de9-283a-4921-9f25-0ee2068d83b4",
+        "name": "Start qualification",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          288
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"operation\":\"inquiry.read\",\"arguments\":{}}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 2500
+          }
+        },
+        "id": "cbc0ee33-ee76-4cfa-9211-fcc22c470b4b",
+        "name": "Read inquiry",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          272,
+          416
+        ],
+        "executeOnce": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 200,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"operation\":\"documents.read\",\"arguments\":{}}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 2500
+          }
+        },
+        "id": "00458b2c-b2b3-438f-9622-017d77729db5",
+        "name": "Read policies",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          496,
+          416
+        ],
+        "executeOnce": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 200,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"operation\":\"research.read\",\"arguments\":{}}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 2500
+          }
+        },
+        "id": "d78a78f0-80cb-419d-9aa3-ff3ea59e8f59",
+        "name": "Read research",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          720,
+          416
+        ],
+        "executeOnce": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 200,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"operation\":\"crm.read\",\"arguments\":{}}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 2500
+          }
+        },
+        "id": "a1befab7-4230-4c2d-bde6-4b898e22f8a9",
+        "name": "Read existing lead",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          944,
+          416
+        ],
+        "executeOnce": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 200,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.healthy === true }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "865dd37b-039d-4a36-b309-20e171d27494",
+        "name": "Evidence ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1392,
+          416
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.questions.length > 0 }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "17c77cea-21d5-441b-bb99-21936d79f82f",
+        "name": "Missing qualification",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          800,
+          416
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({operation: 'customer.ask', arguments: {questions: $('Qualification context').first().json.questions}}) }}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 2500
+          }
+        },
+        "id": "18b6dc75-b4ad-4c8a-8125-021012b3d1bc",
+        "name": "Ask missing qualification",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          1024,
+          336
+        ],
+        "executeOnce": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 200,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.ready === true }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "84f99fde-e855-4143-bcaf-99352545f0ae",
+        "name": "Safe CRM changes",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1472,
+          416
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({operation: 'crm.update', arguments: {changes: $('Policy assessment').first().json.changes}}) }}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "pagination": {
+              "pagination": {
+                "parameters": {
+                  "parameters": []
+                },
+                "paginationCompleteWhen": "other",
+                "completeExpression": "={{ !([408,429].includes($response.statusCode) || $response.statusCode >= 500 || $response.body?.retryable === true || $response.body?.error?.retryable === true || $response.body?.result?.error?.retryable === true) }}",
+                "limitPagesFetched": true,
+                "maxRequests": 3,
+                "requestInterval": 200
+              }
+            },
+            "timeout": 2500
+          }
+        },
+        "id": "06faacf3-9c3a-49ec-8246-dd6875ab4c1f",
+        "name": "Update CRM",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          1328,
+          272
+        ],
+        "executeOnce": true,
+        "retryOnFail": false,
+        "maxTries": 2,
+        "waitBetweenTries": 200,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"operation\":\"crm.read\",\"arguments\":{}}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 2500
+          }
+        },
+        "id": "5a284580-c4c9-4911-b48b-ab1576fd9079",
+        "name": "Read CRM after update",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          1552,
+          272
+        ],
+        "executeOnce": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 200,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.verified === true }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "c19fe5c2-2b35-4faf-9ee2-f5b7b0a9bbdf",
+        "name": "CRM verified",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          2000,
+          272
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({operation: 'followup.create', arguments: {lead_id: $('Policy assessment').first().json.lead_id, type: $('Policy assessment').first().json.type, status: $('Policy assessment').first().json.followStatus}}) }}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 2500
+          }
+        },
+        "id": "4e180ba4-c752-4b27-adf6-2a7e9f29dd77",
+        "name": "Create follow-up",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          1856,
+          192
+        ],
+        "executeOnce": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 200,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.followup_verified === true }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "c9f157cc-7a2e-4222-9965-51e22854a277",
+        "name": "Follow-up verified",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          2304,
+          192
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({operation: 'customer.send', arguments: {recipient: $('Customer response plan').first().json.recipient, body: $('Customer response plan').first().json.body}}) }}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 2500
+          }
+        },
+        "id": "0c19b809-ae44-42d3-9a29-48f821575e76",
+        "name": "Send customer response",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          2384,
+          128
+        ],
+        "executeOnce": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 200,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"operation\":\"crm.read\",\"arguments\":{}}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 2500
+          }
+        },
+        "id": "f975847a-6274-4c02-9ac8-9a065e0d6b22",
+        "name": "Read resulting state",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          2608,
+          128
+        ],
+        "executeOnce": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 200,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify({protocol_version: '1.0', run_id: $env.AWB_RUN_ID, status: $json.status, final_answer: $json.final_answer, artifacts: $json.artifacts, trace: $json.trace}) }}",
+          "options": {}
+        },
+        "id": "a8cb9b6f-bac5-47e9-8e87-ee255b1b5ce1",
+        "name": "AutoWFBench submission",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          3136,
+          384
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify((() => {\nfunction unwrap(x){let v=x?.body??x; for(let i=0;i<4;i++){if(v?.result&&typeof v.result==='object')v=v.result;else if(v?.data&&typeof v.data==='object')v=v.data;else break;}return v??{};}\nfunction read(name){try{return unwrap($(name).all().slice(-1)[0]?.json);}catch{return {};} }\nfunction failed(x){return !x||x.error||x.ok===false||x.success===false;}\nfunction norm(x){return String(x).toLowerCase().replace(/[^a-z0-9]/g,'');}\nfunction leaves(x){const out=[],queue=[{value:x,path:[]}];let visited=0;while(queue.length&&visited<256&&out.length<2048){const current=queue.shift();visited++;if(!current.value||typeof current.value!=='object')continue;for(const [k,v]of Object.entries(current.value)){if(out.length>=2048)break;const path=[...current.path,k];out.push({key:k,path,value:v});if(v&&typeof v==='object'&&path.length<8&&queue.length<256)queue.push({value:v,path});} }return out;}\nfunction pick(sources,aliases){for(const s of sources){const a=leaves(s);for(const key of aliases){const f=a.find(z=>norm(z.key)===norm(key)&&z.value!==null&&z.value!==''&&z.value!==undefined);if(f)return f.value;} }return null;}\nfunction num(x){if(typeof x==='number')return x;const m=String(x??'').replace(/,/g,'').match(/\\d+(?:\\.\\d+)?/);return m?Number(m[0]):null;}\n\nconst inquiry=read('Read inquiry'), policies=read('Read policies'), research=read('Read research'), crm=read('Read existing lead');\nconst lead=crm.lead??crm.snapshot??crm;\nconst source=[inquiry.qualification??inquiry,inquiry.customer??{},lead];\nconst defs=[\n['budget',['monthly_budget','budget_monthly','monthly_budget_usd','budget_usd','budget'],'What monthly budget and currency have you approved for customer-support automation?'],\n['timeline',['timeline','implementation_timeline','launch_timeline','timeline_weeks','implementation_timeline_weeks'],'What is your desired rollout timeframe and any fixed deadline?'],\n['volume',['monthly_ticket_volume','monthly_tickets','ticket_volume','support_volume','monthly_conversations'],'How many support tickets or conversations do you handle per month?'],\n['platform',['support_platform','helpdesk_platform','helpdesk','crm_platform','current_platform','integrations'],'Which support platform and integrations must the solution work with?'],\n['authority',['decision_maker','is_decision_maker','decision_authority','buying_authority'],'Are you the purchasing decision maker, or who approves this project?'],\n['scope',['use_case','automation_goals','requirements','support_requirements'],'Which support tasks, channels, languages and data/privacy requirements should the automation cover?']];\nconst questions=defs.filter(d=>pick(source,d[1])===null).map(d=>d[2]);\nconst required=pick([policies],['required_qualification_fields','required_fields']);\nif(Array.isArray(required)){for(const r of required){const k=typeof r==='string'?r:r.field??r.name;if(k&&pick(source,[k])===null&&!defs.some(d=>d[1].map(norm).includes(norm(k))))questions.push('Please provide '+k.replace(/_/g,' ')+'.');} }\nconst lead_id=inquiry.lead_id??inquiry.lead?.id??lead.lead_id??lead.id;\nconst contact=inquiry.authorized_contact??inquiry.contact??inquiry.recipient; const recipient=typeof contact==='string'?contact:contact?.email??contact?.address??null;\nconst healthy=![inquiry,policies,research,crm].some(failed)&&!!lead_id&&!!recipient;\nreturn [{json:{inquiry,policies,research,crm,lead,lead_id,recipient,questions,healthy} }];\n})()[0].json) }}",
+          "options": {}
+        },
+        "id": "6b95b88d-b104-4064-8e9e-fde7a2f0d650",
+        "name": "Qualification context",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1168,
+          416
+        ],
+        "executeOnce": true
+      },
+      {
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify((() => {\nfunction unwrap(x){let v=x?.body??x; for(let i=0;i<4;i++){if(v?.result&&typeof v.result==='object')v=v.result;else if(v?.data&&typeof v.data==='object')v=v.data;else break;}return v??{};}\nfunction read(name){try{return unwrap($(name).all().slice(-1)[0]?.json);}catch{return {};}}\nfunction failed(x){return !x||x.error||x.ok===false||x.success===false;}\nfunction norm(x){return String(x).toLowerCase().replace(/[^a-z0-9]/g,'');}\nfunction leaves(x){const out=[],queue=[{value:x,path:[]}];let visited=0;while(queue.length&&visited<256&&out.length<2048){const current=queue.shift();visited++;if(!current.value||typeof current.value!=='object')continue;for(const [k,v]of Object.entries(current.value)){if(out.length>=2048)break;const path=[...current.path,k];out.push({key:k,path,value:v});if(v&&typeof v==='object'&&path.length<8&&queue.length<256)queue.push({value:v,path});}}return out;}\nfunction pick(sources,aliases){for(const s of sources){const a=leaves(s);for(const key of aliases){const f=a.find(z=>norm(z.key)===norm(key)&&z.value!==null&&z.value!==''&&z.value!==undefined);if(f)return f.value;}}return null;}\nfunction num(x){if(typeof x==='number')return x;const m=String(x??'').replace(/,/g,'').match(/\\d+(?:\\.\\d+)?/);return m?Number(m[0]):null;}\n\nconst c=$('Qualification context').first().json;\nconst asked=read('Ask missing qualification');\nconst customer=asked.qualification??asked.facts??asked.answers??asked;\nconst sources=[customer,c.inquiry.qualification??c.inquiry,c.lead];\nconst definitions={\nmonthly_budget:['monthly_budget','budget_monthly','monthly_budget_usd','budget_usd','budget'],\ntimeline:['timeline','implementation_timeline','launch_timeline','timeline_weeks','implementation_timeline_weeks'],\nmonthly_ticket_volume:['monthly_ticket_volume','monthly_tickets','ticket_volume','support_volume','monthly_conversations'],\nsupport_platform:['support_platform','helpdesk_platform','helpdesk','crm_platform','current_platform'],\ndecision_maker:['decision_maker','is_decision_maker','decision_authority','buying_authority'],\nuse_case:['use_case','automation_goals','requirements','support_requirements']};\nconst facts={};for(const[k,aliases]of Object.entries(definitions)){const v=pick(sources,aliases);if(v!==null)facts[k]=v;}\nconst gaps=Object.keys(definitions).filter(k=>facts[k]===undefined);\nconst policy=c.policies;\n\nconst policyText=leaves(policy).filter(x=>typeof x.value==='string').map(x=>x.value).join('\\n');\nconst textBudget=policyText.match(/(?:minimum|min|at least)\\s+(?:monthly\\s+)?(?:budget\\s*(?:of|:|is)?\\s*)?\\$\\s*([\\d,]+)/i)?.[1]??policyText.match(/(?:monthly\\s+)?budget\\s*(?:minimum|must be at least|>=|:)\\s*(?:USD\\s*|\\$)?([\\d,]+)/i)?.[1];\nconst textVolume=policyText.match(/(?:at least|minimum|min)\\s*([\\d,]+)\\s*(?:monthly\\s+)?(?:tickets|conversations)/i)?.[1];\nconst minimumBudget=num(pick([policy],['minimum_monthly_budget','min_monthly_budget','min_budget_usd','minimum_budget','min_budget','minimum_budget_usd','min_monthly_budget_usd'])??textBudget);\nconst minimumVolume=num(pick([policy],['minimum_monthly_ticket_volume','min_monthly_tickets','minimum_ticket_volume','min_ticket_volume','minimum_monthly_tickets'])??textVolume);\nconst budget=num(facts.monthly_budget),volume=num(facts.monthly_ticket_volume);\nconst reasons=[],blockers=[];\nif(minimumBudget!==null&&budget!==null&&budget<minimumBudget)blockers.push('Customer budget is below the policy minimum.');\nif(minimumVolume!==null&&volume!==null&&volume<minimumVolume)blockers.push('Support volume is below the policy minimum.');\nconst supported=pick([policy],['supported_platforms','supported_integrations','integrations']);\nconst platform=String(facts.support_platform??'');\nif(Array.isArray(supported)&&platform&&!supported.some(x=>norm(typeof x==='string'?x:x.name??x.platform)===norm(platform)))blockers.push('Required platform needs a compatibility review.');\nconst authority=pick([c.research],['contact_authorized','authorized','is_authorized']);\nif(authority===false)blockers.push('Contact authority is not confirmed by research.');\nif(gaps.length)reasons.push('Missing qualification: '+gaps.join(', ')+'.');\nreasons.push(...blockers);\n\nconst criteria=pick([policy],['qualification_criteria','qualification_rules','criteria']);\nlet evaluatedRules=0;\nif(Array.isArray(criteria)){for(const r of criteria){if(!r||typeof r!=='object')continue;const key=r.field??r.attribute;const op=r.operator??r.op;const target=r.value??r.threshold;if(!key||!op||target===undefined)continue;const value=pick(sources,[key]);if(value===null){gaps.push(key);continue;}let passes=null;const n=num(value),t=num(target);if(['>=','gte','min','minimum'].includes(op)&&n!==null&&t!==null)passes=n>=t;else if(['<=','lte','max','maximum'].includes(op)&&n!==null&&t!==null)passes=n<=t;else if(['equals','eq','=='].includes(op))passes=norm(value)===norm(target);else if(op==='in'&&Array.isArray(target))passes=target.map(norm).includes(norm(value));if(passes!==null){evaluatedRules++;if(!passes)blockers.push('Policy criterion unmet: '+key+' '+op+' '+JSON.stringify(target)+'.');}}}\nconst structuredRules=evaluatedRules>0||minimumBudget!==null||minimumVolume!==null||Array.isArray(supported);\nif(blockers.length)reasons.splice(0,reasons.length,...(gaps.length?['Missing qualification: '+gaps.join(', ')+'.']:[]),...blockers);\nconst fit=blockers.length?'not_qualified':gaps.length||!structuredRules?'needs_review':'qualified';\nif(!structuredRules)reasons.push('Qualification policy needs human interpretation; no automatic commitment.');\nconst routing=pick([policy],['followup_rules','follow_up_rules','followup_policy','follow_up_policy']);\nconst rule=routing&&typeof routing==='object'?(routing[fit]??routing[fit==='not_qualified'?'unqualified':fit==='needs_review'?'needs_information':'qualified']):null;\nlet type=rule?.type??rule?.followup_type??(fit==='qualified'?'discovery_call':fit==='not_qualified'?'nurture':'qualification_review');\nlet followStatus=rule?.status??'open';\nconst allowedTypes=pick([policy,c.crm],['allowed_followup_types','followup_types']);\nif(Array.isArray(allowedTypes)&&!allowedTypes.includes(type))type=allowedTypes.find(x=>/review|clarif|nurture|discovery|call/i.test(x))??allowedTypes[0];\nconst allowedStatuses=pick([policy,c.crm],['allowed_followup_statuses','followup_statuses']);\nif(Array.isArray(allowedStatuses)&&!allowedStatuses.includes(followStatus))followStatus=allowedStatuses.find(x=>/open|pending/i.test(x))??allowedStatuses[0];\nlet writable=pick([c.crm,policy],['writable_fields','public_writable_fields','allowed_update_fields']);\nif(writable&&!Array.isArray(writable)&&typeof writable==='object')writable=Object.keys(writable);\nif(Array.isArray(writable))writable=writable.map(x=>typeof x==='string'?x:x.name??x.field).filter(Boolean);\nelse writable=Object.keys(c.lead).filter(k=>Object.values(definitions).flat().map(norm).includes(norm(k))||['status','lead_status','stage','qualification_status','fit','fit_assessment','notes','qualification','qualification_notes','next_step'].includes(k));\nconst changes={};\nfor(const k of writable){const canonical=Object.entries(definitions).find(([name,aliases])=>aliases.map(norm).includes(norm(k)))?.[0];\nif(canonical&&facts[canonical]!==undefined)changes[k]=facts[canonical];\nelse if(['qualification','qualification_facts'].includes(k))changes[k]=facts;\nelse if(['status','lead_status','stage','qualification_status','fit','fit_status','fit_assessment'].includes(k)){\nconst vals=pick([policy,c.crm],[k+'_values','allowed_'+k+'s','allowed_statuses']);\nchanges[k]=Array.isArray(vals)?(vals.find(v=>norm(v)===norm(fit))??vals.find(v=>fit==='qualified'?/qualified|ready/i.test(v):fit==='not_qualified'?/unqualified|nurture|not.*fit/i.test(v):/review|pending|needs/i.test(v))??c.lead[k]):fit;\n}else if(['notes','qualification_notes','qualification_summary'].includes(k))changes[k]=(typeof c.lead[k]==='string'?c.lead[k]+'\\n':'')+'Qualification: '+fit+'. Facts: '+JSON.stringify(facts)+'. '+reasons.join(' ')+' Sources: customer/inquiry, service and qualification policy, company research.';\nelse if(k==='next_step')changes[k]=type;\n}\nfor(const k of Object.keys(changes))if(changes[k]===undefined)delete changes[k];\nconst ready=c.healthy&&!(c.questions.length&&failed(asked))&&Object.keys(changes).length>0&&!!type;\nreturn [{json:{...c,facts,gaps,fit,reasons,changes,type,followStatus,ready}}];\n})()[0].json) }}",
+          "options": {}
+        },
+        "id": "cf29ddf5-7d8a-4254-9db4-022ea6daaaaa",
+        "name": "Policy assessment",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1248,
+          416
+        ],
+        "executeOnce": true
+      },
+      {
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ {\n  status: 'partial',\n  final_answer: 'Completion is partial; qualification evidence is incomplete and no unsupported success is claimed.',\n  artifacts: {\n    lead_id: $('Qualification context').first().json.lead_id || null,\n    qualification: $('Qualification context').first().json.facts || {},\n    fit: $('Qualification context').first().json.fit || 'unassessed',\n    changes: $('Qualification context').first().json.changes || {},\n    verified_lead: null,\n    followup: null,\n    customer_response: null,\n    remaining_work: [\n      'Resolve missing qualification evidence before CRM mutation.'\n    ]\n  },\n  trace: []\n} }}",
+          "options": {}
+        },
+        "id": "f6bf8acd-c5a0-4346-8e6f-2d86e096253a",
+        "name": "Completion audit",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2912,
+          384
+        ],
+        "executeOnce": true
+      },
+      {
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify((() => {\nfunction unwrap(x){let v=x?.body??x; for(let i=0;i<4;i++){if(v?.result&&typeof v.result==='object')v=v.result;else if(v?.data&&typeof v.data==='object')v=v.data;else break;}return v??{};}\nfunction read(name){try{return unwrap($(name).all().slice(-1)[0]?.json);}catch{return {};}}\nfunction failed(x){return !x||x.error||x.ok===false||x.success===false;}\n\nconst a=$('Policy assessment').first().json, current=unwrap($json),lead=current.lead??current.snapshot??current;\nconst eq=(x,y)=>JSON.stringify(x)===JSON.stringify(y);\nconst mismatches=Object.keys(a.changes).filter(k=>!eq(lead[k],a.changes[k]));\nconst protectedFields=['id','lead_id','email','contact_email','company_name','company','owner','owner_id'];\nconst unexpected=protectedFields.filter(k=>a.lead[k]!==undefined&&!eq(lead[k],a.lead[k])&&!Object.hasOwn(a.changes,k));\nconst update=read('Update CRM');\nconst verified=!failed(current)&&mismatches.length===0&&unexpected.length===0;\nreturn [{json:{...a,verified,mismatches,unexpected,verified_lead:lead,update_receipt:update}}];\n})()[0].json) }}",
+          "options": {}
+        },
+        "id": "0463a369-d2c1-49a4-997c-3e5b7c438b60",
+        "name": "CRM verification",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1776,
+          272
+        ],
+        "executeOnce": true
+      },
+      {
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify((() => {\nfunction unwrap(x){let v=x?.body??x; for(let i=0;i<4;i++){if(v?.result&&typeof v.result==='object')v=v.result;else if(v?.data&&typeof v.data==='object')v=v.data;else break;}return v??{};}\nfunction read(name){try{return unwrap($(name).all().slice(-1)[0]?.json);}catch{return {};}}\nfunction failed(x){return !x||x.error||x.ok===false||x.success===false;}\nfunction norm(x){return String(x).toLowerCase().replace(/[^a-z0-9]/g,'');}\nfunction leaves(x){const out=[],queue=[{value:x,path:[]}];let visited=0;while(queue.length&&visited<256&&out.length<2048){const current=queue.shift();visited++;if(!current.value||typeof current.value!=='object')continue;for(const [k,v]of Object.entries(current.value)){if(out.length>=2048)break;const path=[...current.path,k];out.push({key:k,path,value:v});if(v&&typeof v==='object'&&path.length<8&&queue.length<256)queue.push({value:v,path});}}return out;}\nfunction pick(sources,aliases){for(const s of sources){const a=leaves(s);for(const key of aliases){const f=a.find(z=>norm(z.key)===norm(key)&&z.value!==null&&z.value!==''&&z.value!==undefined);if(f)return f.value;}}return null;}\n\nconst a=$('CRM verification').first().json, receipt=unwrap($json), f=receipt.followup??receipt.follow_up??receipt;\nconst verified=!failed(receipt)&&(f.lead_id===undefined||f.lead_id===a.lead_id)&&(f.type===undefined||f.type===a.type)&&(f.status===undefined||f.status===a.followStatus);\nconst policyText=leaves(a.policies).filter(x=>typeof x.value==='string').map(x=>x.value).join(' ');\nconst evidenceSummary=Object.entries(a.facts).map(([k,v])=>k.replace(/_/g,' ')+': '+(typeof v==='object'?JSON.stringify(v):v)).join('; ');\nconst serviceSummary=pick([a.policies],['service_summary','service_description','description','supported_services']);\nconst body='Thank you for your customer-support automation inquiry. '+(evidenceSummary?'We recorded the following qualification details: '+evidenceSummary+'. ':'')+\n(a.fit==='qualified'?'Your stated needs meet the qualification criteria we could verify. We recommend a discovery discussion to confirm scope and compatibility. ':a.fit==='not_qualified'?'Based on the current qualification policy, we cannot confirm fit for the requested project. ':'We need a further qualification and service review before confirming fit. ')+\na.reasons.join(' ')+' '+(typeof serviceSummary==='string'?'Service information: '+serviceSummary+' ':'')+\n'We have recorded your inquiry and created an '+a.followStatus+' '+a.type.replace(/_/g,' ')+' follow-up. Pricing, integration coverage, timing and any performance targets remain subject to scope review and written agreement; no delivery date or outcome is guaranteed.';\nreturn [{json:{...a,followup_verified:verified,followup_receipt:receipt,body}}];\n})()[0].json) }}",
+          "options": {}
+        },
+        "id": "6942df2c-f284-44c5-b1e1-811f25ba9210",
+        "name": "Customer response plan",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2080,
+          192
+        ],
+        "executeOnce": true
+      }
+    ],
+    "connections": {
+      "Start qualification": {
+        "main": [
+          [
+            {
+              "node": "Read inquiry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read inquiry": {
+        "main": [
+          [
+            {
+              "node": "Read policies",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read policies": {
+        "main": [
+          [
+            {
+              "node": "Read research",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read research": {
+        "main": [
+          [
+            {
+              "node": "Read existing lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence ready": {
+        "main": [
+          [
+            {
+              "node": "Missing qualification",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completion audit",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Missing qualification": {
+        "main": [
+          [
+            {
+              "node": "Ask missing qualification",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Policy assessment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Safe CRM changes": {
+        "main": [
+          [
+            {
+              "node": "Update CRM",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completion audit",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update CRM": {
+        "main": [
+          [
+            {
+              "node": "Read CRM after update",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM verified": {
+        "main": [
+          [
+            {
+              "node": "Create follow-up",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completion audit",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Follow-up verified": {
+        "main": [
+          [
+            {
+              "node": "Send customer response",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completion audit",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send customer response": {
+        "main": [
+          [
+            {
+              "node": "Read resulting state",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read existing lead": {
+        "main": [
+          [
+            {
+              "node": "Qualification context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qualification context": {
+        "main": [
+          [
+            {
+              "node": "Evidence ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ask missing qualification": {
+        "main": [
+          [
+            {
+              "node": "Policy assessment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Policy assessment": {
+        "main": [
+          [
+            {
+              "node": "Safe CRM changes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Completion audit": {
+        "main": [
+          [
+            {
+              "node": "AutoWFBench submission",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read CRM after update": {
+        "main": [
+          [
+            {
+              "node": "CRM verification",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM verification": {
+        "main": [
+          [
+            {
+              "node": "CRM verified",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create follow-up": {
+        "main": [
+          [
+            {
+              "node": "Customer response plan",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Customer response plan": {
+        "main": [
+          [
+            {
+              "node": "Follow-up verified",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read resulting state": {
+        "main": [
+          [
+            {
+              "node": "Completion audit",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true,
+      "executionTimeout": 110,
+      "binaryMode": "separate"
+    },
+    "staticData": null,
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    },
+    "nodeGroups": [
+      {
+        "id": "8b2a6bf3-6f65-4293-bd34-c0b9da21b010",
+        "name": "Gather evidence",
+        "nodeIds": [
+          "cbc0ee33-ee76-4cfa-9211-fcc22c470b4b",
+          "00458b2c-b2b3-438f-9622-017d77729db5",
+          "d78a78f0-80cb-419d-9aa3-ff3ea59e8f59",
+          "a1befab7-4230-4c2d-bde6-4b898e22f8a9",
+          "6b95b88d-b104-4064-8e9e-fde7a2f0d650",
+          "865dd37b-039d-4a36-b309-20e171d27494"
+        ],
+        "description": "Read public inquiry, policy, research and current lead; check authorized contact and prepare missing questions."
+      },
+      {
+        "id": "fde08d4e-f075-46ee-bb45-17e18d2d41a9",
+        "name": "Qualify and assess",
+        "nodeIds": [
+          "17c77cea-21d5-441b-bb99-21936d79f82f",
+          "18b6dc75-b4ad-4c8a-8125-021012b3d1bc",
+          "cf29ddf5-7d8a-4254-9db4-022ea6daaaaa",
+          "84f99fde-e855-4143-bcaf-99352545f0ae"
+        ],
+        "description": "Ask for missing facts once, apply policy criteria and map only supported CRM changes."
+      },
+      {
+        "id": "42ab226a-800c-4773-9a51-e0e43e0beace",
+        "name": "Update and verify CRM",
+        "nodeIds": [
+          "06faacf3-9c3a-49ec-8246-dd6875ab4c1f",
+          "5a284580-c4c9-4911-b48b-ab1576fd9079",
+          "0463a369-d2c1-49a4-997c-3e5b7c438b60",
+          "c19fe5c2-2b35-4faf-9ee2-f5b7b0a9bbdf"
+        ],
+        "description": "Recover bounded transient update failures and verify intended fields plus protected lead identity."
+      },
+      {
+        "id": "5084c325-bc5a-4d35-9372-7ae60d9f461f",
+        "name": "Create follow-up",
+        "nodeIds": [
+          "4e180ba4-c752-4b27-adf6-2a7e9f29dd77",
+          "6942df2c-f284-44c5-b1e1-811f25ba9210",
+          "c9f157cc-7a2e-4222-9965-51e22854a277"
+        ],
+        "description": "Create a policy-based follow-up and prepare a cautious customer response after checking the receipt."
+      },
+      {
+        "id": "57016fa8-0d17-48e8-b5c4-a8e9f923951b",
+        "name": "Respond and reread",
+        "nodeIds": [
+          "0c19b809-ae44-42d3-9a29-48f821575e76",
+          "f975847a-6274-4c02-9ac8-9a065e0d6b22"
+        ],
+        "description": "Send the authorized response and retrieve resulting state for verification."
+      },
+      {
+        "id": "e9c0fdfa-ddb2-4a75-b4ce-864dc9c0c5aa",
+        "name": "Completion contract",
+        "nodeIds": [
+          "f6bf8acd-c5a0-4346-8e6f-2d86e096253a",
+          "a8cb9b6f-bac5-47e9-8e87-ee255b1b5ce1"
+        ],
+        "description": "Audit completed and skipped actions, identify remaining work, and emit one AutoWFBench submission."
+      }
+    ],
+    "pinData": {},
+    "versionId": "52a1bd63-a6b1-4753-93d1-a3a62c3faa25",
+    "activeVersionId": null,
+    "versionCounter": 10,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-10-07T13:45:40.821Z",
+        "createdAt": "2026-10-07T13:45:40.821Z",
+        "role": "workflow:owner",
+        "workflowId": "ZIjNzo9Gh4GI1bAv",
+        "projectId": "MhqIOvsBDsIyuMOt",
+        "project": {
+          "updatedAt": "2026-10-07T08:33:46.556Z",
+          "createdAt": "2026-10-07T08:33:08.482Z",
+          "id": "MhqIOvsBDsIyuMOt",
+          "name": "AutoWFBench Composer <composer@example.test>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "474e4ea2-ca93-4d6c-ba5a-b5f38198e479"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]
