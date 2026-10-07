@@ -150,6 +150,37 @@ The single completed benchmark run scored 2.33/10 with 11 tool calls in 20.3348
 seconds. This demonstrates autonomous native configuration generation and valid
 execution, not successful task completion or optimization.
 
+### Official n8n MCP composition strategy
+
+`n8n-mcp-compose` uses Sol with n8n's official instance-level MCP. Before authoring,
+Sol records a compact execution plan, maps it to native control-flow primitives,
+and states an iteration hypothesis. The bounded runner then records deterministic
+validation, pinned-runtime import, execution outcome and duration, structural
+complexity, and a runtime-safe failure category.
+
+Repairs are classified as targeted or architectural. They preserve working graph
+sections by default, prohibit retry-node unrolling, and must retain provable
+termination. Cyclic graphs without a native bounded-loop primitive are rejected.
+Large relative graph growth is treated as a regression when it does not advance
+execution status; there is no fixed maximum node count. The default limit is three
+Composer iterations, after which the experiment stops and preserves its evidence.
+
+```bash
+export N8N_MCP_TOKEN='instance-level-mcp-api-key'
+python -m autowfbench.composer n8n-mcp-compose crm-lead-qualification \
+  --data-dir composer-runs/native-crm-composition --max-iterations 3
+```
+
+Benchmark execution is only attempted after the exact exported MCP-authored
+workflow completes the public-contract execution check. No validation/runtime
+error details beyond the Composer's own artifact are taken from the benchmark,
+and benchmark evaluation remains behind the existing numeric-only projection.
+
+The current CRM experiment remains an incomplete research result. Its MCP-authored
+workflow reaches the `Completion audit` Set node, where n8n 2.42.3's Tournament
+expression runtime rejects the expression with `null does not match type Pattern`.
+Consequently, that workflow has not reached benchmark scoring.
+
 Run all tests:
 
 ```bash

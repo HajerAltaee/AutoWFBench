@@ -9,6 +9,8 @@ from autowfbench.composer.candidate_runtime import local_step, resolve
 from autowfbench.composer.generator import child_prompt, initial_prompt
 from autowfbench.composer.models import NumericObservation, structural_complexity, validate_candidate
 from autowfbench.composer.n8n_validation import parse_workflow_json, validate_n8n_workflow
+from autowfbench.composer.n8n_mcp_generator import _mcp_trace, mcp_prompt
+from autowfbench.composer.n8n_composition import Structure, failure_category, structural_regression, workflow_structure
 from autowfbench.composer.search import ComposerSearch, select
 from autowfbench.composer.simulation import SIMULATED_CHALLENGE, SimulatedEvaluator, SimulatedGenerator
 
@@ -75,6 +77,37 @@ class ComposerTests(unittest.TestCase):
     def test_native_n8n_json_parser_rejects_duplicate_keys(self):
         with self.assertRaises(ValueError):
             parse_workflow_json('{"name":"one","name":"two"}')
+
+    def test_official_n8n_mcp_prompt_and_trace_preserve_boundary(self):
+        challenge = {
+            "id": "crm", "version": "1", "name": "CRM", "task": "Public task",
+            "limits": {}, "capabilities": ["inquiry.read"], "completion": "Return result",
+        }
+        prompt = mcp_prompt(challenge)
+        self.assertIn("official n8n MCP", prompt)
+        self.assertNotIn("scorecard", json.dumps(challenge))
+        events = "\n".join([
+            json.dumps({"type": "item.completed", "item": {"type": "mcp_tool_call", "server": "n8n", "tool": "validate_workflow", "status": "completed"}}),
+            json.dumps({"type": "item.completed", "item": {"type": "command_execution", "command": "ignored"}}),
+        ])
+        self.assertEqual([item["tool"] for item in _mcp_trace(events)], ["validate_workflow"])
+
+    def test_native_n8n_validation_accepts_official_export_metadata_and_ids(self):
+        value = native_workflow()
+        value["id"] = "G20KumTAqqgYTevq"
+        value.update({"createdAt": "2026-10-07", "versionId": "version", "tags": [], "pinData": {}})
+        self.assertEqual(validate_n8n_workflow(value, {"capabilities": ["inquiry.read"]}), [])
+
+    def test_composition_strategy_detects_cycles_and_relative_regressions(self):
+        value = native_workflow()
+        value["connections"]["Build Submission"] = {"main": [[{"node": "Read inquiry", "type": "main", "index": 0}]]}
+        issues = validate_n8n_workflow(value, {"capabilities": ["inquiry.read"]})
+        self.assertIn("UNBOUNDED_CONTROL_FLOW", {issue.code for issue in issues})
+        compact = workflow_structure(native_workflow())
+        expanded = Structure(nodes=30, edges=35, branches=0, code_characters=100, retry_nodes=0, duplicate_shapes=20, cycles=0)
+        self.assertTrue(structural_regression(compact, expanded, "execution_timeout", "execution_timeout"))
+        self.assertFalse(structural_regression(compact, expanded, "validation", "completed"))
+        self.assertEqual(failure_category([{"code": "N8N_EXECUTION_TIMEOUT", "message": "timed out"}]), "execution_timeout")
 
     def test_candidate_contract_is_strict_and_complexity_is_candidate_owned(self):
         value = candidate(operations=("alpha.read", "beta.write"))

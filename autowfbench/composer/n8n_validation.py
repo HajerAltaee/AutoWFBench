@@ -12,12 +12,18 @@ N8N_VERSION = "2.42.3"
 N8N_IMAGE = "n8nio/n8n@sha256:240eaa2a3d491adac5817aa4c3f1c521bb18ec79f6e448517158d5220ee0f37b"
 ALLOWED_NODE_VERSIONS = {
     "n8n-nodes-base.manualTrigger": {1},
-    "n8n-nodes-base.httpRequest": {4, 4.1, 4.2},
+    "n8n-nodes-base.httpRequest": {4, 4.1, 4.2, 4.3},
     "n8n-nodes-base.if": {2, 2.1, 2.2},
     "n8n-nodes-base.set": {3, 3.1, 3.2, 3.3, 3.4},
     "n8n-nodes-base.merge": {3, 3.1, 3.2},
+    "n8n-nodes-base.code": {2},
 }
 TOP_LEVEL_FIELDS = {"id", "name", "nodes", "connections", "settings", "active"}
+N8N_EXPORT_FIELDS = {
+    "activeVersionId", "createdAt", "description", "isArchived", "meta", "nodeGroups",
+    "pinData", "shared", "sourceWorkflowId", "staticData", "tags", "triggerCount",
+    "updatedAt", "versionCounter", "versionId", "versionMetadata",
+}
 NODE_FIELDS = {
     "id", "name", "type", "typeVersion", "position", "parameters", "disabled",
     "executeOnce", "alwaysOutputData", "retryOnFail", "maxTries", "waitBetweenTries", "onError",
@@ -76,17 +82,15 @@ def validate_n8n_workflow(workflow, challenge):
     if not isinstance(workflow, dict):
         return [ValidationIssue("WORKFLOW_NOT_OBJECT", "$", "Workflow must be a JSON object")]
     missing = TOP_LEVEL_FIELDS - set(workflow)
-    extra = set(workflow) - TOP_LEVEL_FIELDS
+    extra = set(workflow) - TOP_LEVEL_FIELDS - N8N_EXPORT_FIELDS
     if missing:
         _issue(issues, "MISSING_WORKFLOW_FIELDS", "$", f"Missing fields: {sorted(missing)}")
     if extra:
         _issue(issues, "UNSUPPORTED_WORKFLOW_FIELDS", "$", f"Unsupported generated fields: {sorted(extra)}")
     if issues:
         return issues
-    try:
-        uuid.UUID(str(workflow["id"]))
-    except (ValueError, TypeError, AttributeError):
-        _issue(issues, "INVALID_WORKFLOW_ID", "$.id", "Workflow id must be a UUID accepted by the pinned n8n runtime")
+    if not isinstance(workflow["id"], str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", workflow["id"]):
+        _issue(issues, "INVALID_WORKFLOW_ID", "$.id", "Workflow id must use the pinned n8n runtime's native identifier format")
     if not isinstance(workflow["name"], str) or not workflow["name"].strip():
         _issue(issues, "INVALID_WORKFLOW_NAME", "$.name", "Workflow name must be nonempty")
     if workflow["active"] is not False:
@@ -94,8 +98,8 @@ def validate_n8n_workflow(workflow, challenge):
     if not isinstance(workflow["settings"], dict):
         _issue(issues, "INVALID_SETTINGS", "$.settings", "settings must be an object")
     nodes = workflow["nodes"]
-    if not isinstance(nodes, list) or not 2 <= len(nodes) <= 80:
-        _issue(issues, "INVALID_NODES", "$.nodes", "nodes must contain 2-80 node objects")
+    if not isinstance(nodes, list) or len(nodes) < 2:
+        _issue(issues, "INVALID_NODES", "$.nodes", "nodes must contain at least two node objects")
         return issues
     names, ids, by_name = set(), set(), {}
     for index, node in enumerate(nodes):
@@ -174,6 +178,11 @@ def validate_n8n_workflow(workflow, challenge):
             seen.add(current); stack.extend(adjacency.get(current, ()))
         for name in sorted(names - seen):
             _issue(issues, "UNREACHABLE_NODE", "$.nodes", f"Node is unreachable from the trigger: {name}")
+    cycle_nodes = _cyclic_nodes(adjacency)
+    if cycle_nodes:
+        bounded = any(by_name.get(name, {}).get("type") == "n8n-nodes-base.splitInBatches" for name in cycle_nodes)
+        if not bounded:
+            _issue(issues, "UNBOUNDED_CONTROL_FLOW", "$.connections", f"Control-flow cycle has no native bounded loop node: {sorted(cycle_nodes)}")
     for index, node in enumerate(nodes):
         if not isinstance(node, dict) or not isinstance(node.get("parameters"), dict):
             continue
@@ -183,7 +192,7 @@ def validate_n8n_workflow(workflow, challenge):
                 if reference not in names:
                     _issue(issues, "UNKNOWN_NODE_REFERENCE", f"$.nodes[{index}].parameters", f"Expression references unknown node: {reference}")
         if node.get("type") == "n8n-nodes-base.httpRequest":
-            _validate_http_node(issues, node, index, set(challenge.get("capabilities", ())))
+            _validate_http_node(issues, node, index, set(challenge.get("capabilities", ())), workflow)
     for path, value in _walk(workflow):
         if isinstance(value, dict):
             for key, item in value.items():
@@ -192,7 +201,27 @@ def validate_n8n_workflow(workflow, challenge):
     return issues
 
 
-def _validate_http_node(issues, node, index, capabilities):
+def _cyclic_nodes(graph):
+    visiting, visited, cyclic = [], set(), set()
+
+    def visit(node):
+        if node in visiting:
+            cyclic.update(visiting[visiting.index(node):])
+            return
+        if node in visited:
+            return
+        visiting.append(node)
+        for target in graph.get(node, ()):
+            visit(target)
+        visiting.pop()
+        visited.add(node)
+
+    for node in graph:
+        visit(node)
+    return cyclic
+
+
+def _validate_http_node(issues, node, index, capabilities, workflow):
     path, parameters = f"$.nodes[{index}].parameters", node["parameters"]
     required = {"method", "url", "sendHeaders", "headerParameters", "sendBody", "specifyBody", "jsonBody", "options"}
     if required - set(parameters):
@@ -209,6 +238,23 @@ def _validate_http_node(issues, node, index, capabilities):
         _issue(issues, "INVALID_TOOL_BODY", path + ".jsonBody", "jsonBody must be an n8n expression string")
         return
     mentioned = {capability for capability in capabilities if capability in body}
+    if len(mentioned) == 1:
+        return
+    if "$json.request" in body:
+        source = "\n".join(
+            str(item.get("parameters", {}).get("jsCode", ""))
+            for item in workflow.get("nodes", [])
+            if isinstance(item, dict) and item.get("type") == "n8n-nodes-base.code"
+        )
+        dynamic = set(re.findall(
+            r'(?:operation\s*:\s*|next\([^,]+,\s*)["\']([a-z][a-z0-9_-]*\.[a-z][a-z0-9_-]*)["\']',
+            source,
+        ))
+        if dynamic and dynamic <= capabilities:
+            return
+        if dynamic - capabilities:
+            _issue(issues, "INVALID_CAPABILITY_OPERATION", path + ".jsonBody", f"Dynamic dispatcher contains unsupported capabilities: {sorted(dynamic - capabilities)}")
+            return
     if len(mentioned) != 1:
         _issue(issues, "INVALID_CAPABILITY_OPERATION", path + ".jsonBody", "Each HTTP Request must identify exactly one public challenge capability")
 

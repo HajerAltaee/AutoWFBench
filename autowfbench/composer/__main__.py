@@ -8,6 +8,8 @@ from pathlib import Path
 from autowfbench.composer.evaluation import LocalBenchmarkEvaluator, N8nBenchmarkEvaluator
 from autowfbench.composer.generator import CodexGenerator
 from autowfbench.composer.n8n_generator import N8nGenerator
+from autowfbench.composer.n8n_composition import McpCompositionRunner
+from autowfbench.composer.n8n_mcp_generator import OfficialN8nMcpGenerator
 from autowfbench.composer.n8n_runtime import N8nCliRuntime
 from autowfbench.composer.n8n_validation import issues_as_dicts, validate_n8n_workflow
 from autowfbench.core.common import read_json
@@ -64,11 +66,72 @@ def main():
     validate_native = sub.add_parser("n8n-validate", help="Validate an existing native n8n artifact without benchmarking")
     validate_native.add_argument("challenge_id")
     validate_native.add_argument("workflow", type=Path)
+    mcp_native = sub.add_parser("n8n-mcp-generate", help="Author and execute one workflow through official n8n MCP")
+    mcp_native.add_argument("challenge_id")
+    mcp_native.add_argument("--model", default=os.environ.get("AWB_COMPOSER_MODEL", "gpt-6.1-sol"))
+    mcp_native.add_argument("--data-dir", type=Path, required=True)
+    mcp_native.add_argument("--mcp-url", default=os.environ.get("N8N_MCP_URL", "http://127.0.0.1:5678/mcp-server/http"))
+    mcp_native.add_argument("--mcp-token-env", default="N8N_MCP_TOKEN")
+    mcp_native.add_argument("--n8n-container", default=os.environ.get("N8N_MCP_CONTAINER", "awb-composer-mcp-n8n"))
+    mcp_native.add_argument("--existing-workflow-id")
+    mcp_native.add_argument("--validation-error", action="append", default=[])
+    mcp_compose = sub.add_parser("n8n-mcp-compose", help="Run bounded composition-first official n8n MCP iterations")
+    mcp_compose.add_argument("challenge_id")
+    mcp_compose.add_argument("--model", default=os.environ.get("AWB_COMPOSER_MODEL", "gpt-6.1-sol"))
+    mcp_compose.add_argument("--data-dir", type=Path, required=True)
+    mcp_compose.add_argument("--max-iterations", type=int, default=3)
+    mcp_compose.add_argument("--mcp-url", default=os.environ.get("N8N_MCP_URL", "http://127.0.0.1:5678/mcp-server/http"))
+    mcp_compose.add_argument("--mcp-token-env", default="N8N_MCP_TOKEN")
+    mcp_compose.add_argument("--n8n-container", default=os.environ.get("N8N_MCP_CONTAINER", "awb-composer-mcp-n8n"))
+    mcp_compose.add_argument("--judge-url", default=os.environ.get("AWB_JUDGE_URL"))
+    mcp_compose.add_argument("--benchmark-data-dir", type=Path, default=Path("runs"))
+    mcp_compose.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
     if args.command == "simulate":
         history = ComposerSearch(SIMULATED_CHALLENGE, SimulatedGenerator(), SimulatedEvaluator(), args.data_dir, iterations=2, repeats=2).run()
         print("SIMULATED ONLY — no benchmark or judge was invoked.")
         print(json.dumps(history, indent=2))
+        return
+    if args.command == "n8n-mcp-generate":
+        challenge = load_challenge(args.challenge_id)["definition"]
+        runtime = N8nCliRuntime()
+        workflow, provenance = OfficialN8nMcpGenerator(
+            args.model, args.data_dir, runtime, args.mcp_url,
+            token_env=args.mcp_token_env, container=args.n8n_container,
+        ).generate(
+            challenge,
+            existing_workflow_id=args.existing_workflow_id,
+            validation_errors=[{"code": "N8N_EXECUTION_REJECTED", "message": item} for item in args.validation_error],
+        )
+        print(json.dumps({
+            "workflow": str((args.data_dir / "workflow.json").resolve()),
+            "workflow_id": workflow["id"],
+            "workflow_digest": provenance["workflow_digest"],
+            "mcp_tool_trace": str((args.data_dir / "mcp-tool-trace.json").resolve()),
+        }, indent=2))
+        return
+    if args.command == "n8n-mcp-compose":
+        challenge = load_challenge(args.challenge_id)["definition"]
+        runtime = N8nCliRuntime()
+
+        def generator_factory(iteration_dir):
+            return OfficialN8nMcpGenerator(
+                args.model, iteration_dir, runtime, args.mcp_url,
+                token_env=args.mcp_token_env, container=args.n8n_container,
+            )
+
+        workflow, history = McpCompositionRunner(
+            generator_factory, runtime, args.data_dir, max_iterations=args.max_iterations,
+        ).run(challenge)
+        result = {
+            "workflow": str((args.data_dir / f"iteration-{len(history):02d}" / "workflow.json").resolve()),
+            "workflow_id": workflow["id"], "iterations": history,
+        }
+        if args.judge_url:
+            engine = Engine(args.benchmark_data_dir, args.judge_url, os.environ.get("AWB_JUDGE_TOKEN"), "0.0.0.0", "host.docker.internal")
+            workflow_path = args.data_dir / f"iteration-{len(history):02d}" / "workflow.json"
+            result["benchmark"] = N8nBenchmarkEvaluator(engine, args.challenge_id, workflow_path, runtime).evaluate(workflow, args.seed).as_dict()
+        print(json.dumps(result, indent=2))
         return
     if args.command in ("n8n-generate", "n8n-run"):
         challenge = load_challenge(args.challenge_id)["definition"]
