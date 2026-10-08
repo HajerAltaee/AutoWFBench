@@ -1,0 +1,124 @@
+{
+  "workflow_digest": "6caecab00a5b15bab37bc859b050690d7b5c9a7a849c9997464162d9be916de9",
+  "judge_invoked": false,
+  "results": [
+    {
+      "scenario": "happy-path",
+      "passed": false,
+      "errors": [
+        "Expected 1 update attempts, got 0",
+        "Incorrect completion status",
+        "Missing or wrong CRM field: budget_aed",
+        "Missing or wrong CRM field: timeline_weeks",
+        "Missing or wrong CRM field: volume",
+        "Missing or wrong CRM field: languages",
+        "Missing or wrong CRM field: crm",
+        "Missing or wrong CRM field: channel",
+        "Missing or wrong CRM field: human_handoff",
+        "Missing or wrong CRM field: status",
+        "Missing or wrong CRM field: next_action",
+        "Missing or wrong CRM field: owner",
+        "Actions missing or duplicated",
+        "CRM readback missing",
+        "Customer caveat missing",
+        "Actual follow-up receipt missing",
+        "Real assessment/scheduling work missing"
+      ],
+      "operation_counts": {
+        "inquiry.read": 1,
+        "documents.read": 1,
+        "research.read": 1,
+        "crm.read": 1,
+        "customer.ask": 1
+      }
+    },
+    {
+      "scenario": "transient-recovery",
+      "passed": false,
+      "errors": [
+        "Expected 2 update attempts, got 0",
+        "Incorrect completion status",
+        "Missing or wrong CRM field: budget_aed",
+        "Missing or wrong CRM field: timeline_weeks",
+        "Missing or wrong CRM field: volume",
+        "Missing or wrong CRM field: languages",
+        "Missing or wrong CRM field: crm",
+        "Missing or wrong CRM field: channel",
+        "Missing or wrong CRM field: human_handoff",
+        "Missing or wrong CRM field: status",
+        "Missing or wrong CRM field: next_action",
+        "Missing or wrong CRM field: owner",
+        "Actions missing or duplicated",
+        "CRM readback missing",
+        "Customer caveat missing",
+        "Actual follow-up receipt missing",
+        "Real assessment/scheduling work missing"
+      ],
+      "operation_counts": {
+        "inquiry.read": 1,
+        "documents.read": 1,
+        "research.read": 1,
+        "crm.read": 1,
+        "customer.ask": 1
+      }
+    },
+    {
+      "scenario": "retry-exhaustion",
+      "passed": false,
+      "errors": [
+        "Expected 3 update attempts, got 0"
+      ],
+      "operation_counts": {
+        "inquiry.read": 1,
+        "documents.read": 1,
+        "research.read": 1,
+        "crm.read": 1,
+        "customer.ask": 1
+      }
+    },
+    {
+      "scenario": "permanent-failure",
+      "passed": false,
+      "errors": [
+        "Expected 1 update attempts, got 0"
+      ],
+      "operation_counts": {
+        "inquiry.read": 1,
+        "documents.read": 1,
+        "research.read": 1,
+        "crm.read": 1,
+        "customer.ask": 1
+      }
+    },
+    {
+      "scenario": "alternate-routing",
+      "passed": false,
+      "errors": [
+        "Expected 1 update attempts, got 0",
+        "Incorrect completion status",
+        "Missing or wrong CRM field: budget_aed",
+        "Missing or wrong CRM field: timeline_weeks",
+        "Missing or wrong CRM field: volume",
+        "Missing or wrong CRM field: languages",
+        "Missing or wrong CRM field: crm",
+        "Missing or wrong CRM field: channel",
+        "Missing or wrong CRM field: human_handoff",
+        "Missing or wrong CRM field: status",
+        "Missing or wrong CRM field: next_action",
+        "Missing or wrong CRM field: owner",
+        "Actions missing or duplicated",
+        "CRM readback missing",
+        "Customer caveat missing",
+        "Actual follow-up receipt missing",
+        "Real assessment/scheduling work missing"
+      ],
+      "operation_counts": {
+        "inquiry.read": 1,
+        "documents.read": 1,
+        "research.read": 1,
+        "crm.read": 1,
+        "customer.ask": 1
+      }
+    }
+  ]
+}

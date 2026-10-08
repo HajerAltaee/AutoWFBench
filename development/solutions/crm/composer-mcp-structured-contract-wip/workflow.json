@@ -1,0 +1,1242 @@
+{
+  "updatedAt": "2026-10-08T18:13:59.441Z",
+  "createdAt": "2026-10-07T13:45:40.812Z",
+  "id": "ZIjNzo9Gh4GI1bAv",
+  "name": "AutoWFBench CRM Lead Qualification",
+  "description": "Qualifies an inbound support automation inquiry from public evidence, updates and verifies the existing CRM lead, creates follow-up, sends a cautious response, and emits the completion contract with bounded retry.",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "bd389de9-283a-4921-9f25-0ee2068d83b4",
+      "name": "Start qualification",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"operation\":\"inquiry.read\",\"arguments\":{}}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 2500,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": []
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (() => { let e=$response.body; for(let i=0;i<8;i++){ if(typeof e?.ok==='boolean') break; e=e?.result??e?.data??e?.body??e; } return e?.ok===true || (e?.ok===false ? e?.error?.retryable!==true : !([408,429].includes($response.statusCode)||$response.statusCode>=500)); })() }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "cbc0ee33-ee76-4cfa-9211-fcc22c470b4b",
+      "name": "Read inquiry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        272,
+        416
+      ],
+      "executeOnce": true,
+      "retryOnFail": false,
+      "maxTries": 2,
+      "waitBetweenTries": 200,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"operation\":\"documents.read\",\"arguments\":{}}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 2500,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": []
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (() => { let e=$response.body; for(let i=0;i<8;i++){ if(typeof e?.ok==='boolean') break; e=e?.result??e?.data??e?.body??e; } return e?.ok===true || (e?.ok===false ? e?.error?.retryable!==true : !([408,429].includes($response.statusCode)||$response.statusCode>=500)); })() }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "00458b2c-b2b3-438f-9622-017d77729db5",
+      "name": "Read policies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        496,
+        416
+      ],
+      "executeOnce": true,
+      "retryOnFail": false,
+      "maxTries": 2,
+      "waitBetweenTries": 200,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"operation\":\"research.read\",\"arguments\":{}}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 2500,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": []
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (() => { let e=$response.body; for(let i=0;i<8;i++){ if(typeof e?.ok==='boolean') break; e=e?.result??e?.data??e?.body??e; } return e?.ok===true || (e?.ok===false ? e?.error?.retryable!==true : !([408,429].includes($response.statusCode)||$response.statusCode>=500)); })() }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "d78a78f0-80cb-419d-9aa3-ff3ea59e8f59",
+      "name": "Read research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        720,
+        416
+      ],
+      "executeOnce": true,
+      "retryOnFail": false,
+      "maxTries": 2,
+      "waitBetweenTries": 200,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"operation\":\"crm.read\",\"arguments\":{}}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 2500,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": []
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (() => { let e=$response.body; for(let i=0;i<8;i++){ if(typeof e?.ok==='boolean') break; e=e?.result??e?.data??e?.body??e; } return e?.ok===true || (e?.ok===false ? e?.error?.retryable!==true : !([408,429].includes($response.statusCode)||$response.statusCode>=500)); })() }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "a1befab7-4230-4c2d-bde6-4b898e22f8a9",
+      "name": "Read existing lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        944,
+        416
+      ],
+      "executeOnce": true,
+      "retryOnFail": false,
+      "maxTries": 2,
+      "waitBetweenTries": 200,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.healthy === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "865dd37b-039d-4a36-b309-20e171d27494",
+      "name": "Evidence ready",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1392,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.questions.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "17c77cea-21d5-441b-bb99-21936d79f82f",
+      "name": "Missing qualification",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({operation: 'customer.ask', arguments: {questions: $('Qualification context').first().json.questions} }) }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 2500,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": []
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (() => { let e=$response.body; for(let i=0;i<8;i++){ if(typeof e?.ok==='boolean') break; e=e?.result??e?.data??e?.body??e; } return e?.ok===true || (e?.ok===false ? e?.error?.retryable!==true : !([408,429].includes($response.statusCode)||$response.statusCode>=500)); })() }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "18b6dc75-b4ad-4c8a-8125-021012b3d1bc",
+      "name": "Ask missing qualification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1024,
+        336
+      ],
+      "executeOnce": true,
+      "retryOnFail": false,
+      "maxTries": 2,
+      "waitBetweenTries": 200,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.safe_changes === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "84f99fde-e855-4143-bcaf-99352545f0ae",
+      "name": "Safe CRM changes",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1472,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({operation: 'crm.update', arguments: {changes: $('Policy assessment').first().json.changes} }) }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 2500,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": []
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (() => { let e=$response.body; for(let i=0;i<8;i++){ if(typeof e?.ok==='boolean') break; e=e?.result??e?.data??e?.body??e; } return e?.ok===true || (e?.ok===false ? e?.error?.retryable!==true : !([408,429].includes($response.statusCode)||$response.statusCode>=500)); })() }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "06faacf3-9c3a-49ec-8246-dd6875ab4c1f",
+      "name": "Update CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1328,
+        272
+      ],
+      "executeOnce": true,
+      "retryOnFail": false,
+      "maxTries": 2,
+      "waitBetweenTries": 200,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"operation\":\"crm.read\",\"arguments\":{}}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 2500,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": []
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (() => { let e=$response.body; for(let i=0;i<8;i++){ if(typeof e?.ok==='boolean') break; e=e?.result??e?.data??e?.body??e; } return e?.ok===true || (e?.ok===false ? e?.error?.retryable!==true : !([408,429].includes($response.statusCode)||$response.statusCode>=500)); })() }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "5a284580-c4c9-4911-b48b-ab1576fd9079",
+      "name": "Read CRM after update",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1552,
+        272
+      ],
+      "executeOnce": true,
+      "retryOnFail": false,
+      "maxTries": 2,
+      "waitBetweenTries": 200,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.verified === true && $json.ready === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c19fe5c2-2b35-4faf-9ee2-f5b7b0a9bbdf",
+      "name": "CRM verified",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2000,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({operation: 'followup.create', arguments: {lead_id: $('Policy assessment').first().json.lead_id, type: $('Policy assessment').first().json.type, status: $('Policy assessment').first().json.followStatus} }) }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 2500,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": []
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (() => { let e=$response.body; for(let i=0;i<8;i++){ if(typeof e?.ok==='boolean') break; e=e?.result??e?.data??e?.body??e; } return e?.ok===true || (e?.ok===false ? e?.error?.retryable!==true : !([408,429].includes($response.statusCode)||$response.statusCode>=500)); })() }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "4e180ba4-c752-4b27-adf6-2a7e9f29dd77",
+      "name": "Create follow-up",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1856,
+        192
+      ],
+      "executeOnce": true,
+      "retryOnFail": false,
+      "maxTries": 2,
+      "waitBetweenTries": 200,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.followup_verified === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c9f157cc-7a2e-4222-9965-51e22854a277",
+      "name": "Follow-up verified",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2304,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({operation: 'customer.send', arguments: {recipient: $('Customer response plan').first().json.recipient, body: $('Customer response plan').first().json.body} }) }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 2500,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": []
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (() => { let e=$response.body; for(let i=0;i<8;i++){ if(typeof e?.ok==='boolean') break; e=e?.result??e?.data??e?.body??e; } return e?.ok===true || (e?.ok===false ? e?.error?.retryable!==true : !([408,429].includes($response.statusCode)||$response.statusCode>=500)); })() }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "0c19b809-ae44-42d3-9a29-48f821575e76",
+      "name": "Send customer response",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2384,
+        128
+      ],
+      "executeOnce": true,
+      "retryOnFail": false,
+      "maxTries": 2,
+      "waitBetweenTries": 200,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AWB_ENV_BASE_URL + '/tools' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.AWB_ENV_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"operation\":\"crm.read\",\"arguments\":{}}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 2500,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": []
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ (() => { let e=$response.body; for(let i=0;i<8;i++){ if(typeof e?.ok==='boolean') break; e=e?.result??e?.data??e?.body??e; } return e?.ok===true || (e?.ok===false ? e?.error?.retryable!==true : !([408,429].includes($response.statusCode)||$response.statusCode>=500)); })() }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 200
+            }
+          }
+        }
+      },
+      "id": "f975847a-6274-4c02-9ac8-9a065e0d6b22",
+      "name": "Read resulting state",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2608,
+        128
+      ],
+      "executeOnce": true,
+      "retryOnFail": false,
+      "maxTries": 2,
+      "waitBetweenTries": 200,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify({protocol_version: '1.0', run_id: $env.AWB_RUN_ID, status: $json.status, final_answer: $json.final_answer, artifacts: $json.artifacts, trace: $json.trace}) }}",
+        "options": {}
+      },
+      "id": "a8cb9b6f-bac5-47e9-8e87-ee255b1b5ce1",
+      "name": "AutoWFBench submission",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3136,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify((() => {\n\nfunction receipt(name) {\n try { const items=$(name).all(); const raw=items[items.length-1]?.json; const e=raw?.body??raw; return e?.ok!==undefined?e:(e?.result??e?.data??e??{ok:false,error:{message:'Empty receipt'} }); }\n catch(error) { return {ok:false,error:{message:'Stage not reached: '+name} }; }\n}\nfunction value(e) { return e?.ok===true?e.value:null; }\nfunction stage(name) { try { return $(name).first().json; } catch(error) { return null; } }\n\nfunction factsFrom(x) {\n const s=x?.qualification??x?.facts??x?.answers??x??{};\n const a=Array.isArray(s)?Object.fromEntries(s.filter(v=>v?.field&&v.value!==undefined).map(v=>[v.field,v.value])):s;\n return {budget_aed:a.budget_aed??a.budget,timeline_weeks:a.timeline_weeks??a.implementation_timeline_weeks??a.timeline,volume:a.volume??a.monthly_ticket_volume??a.monthly_tickets??a.monthly_conversations,languages:a.languages??a.required_languages,crm:a.crm??a.crm_platform,channel:a.channel??a.channels,human_handoff:a.human_handoff??a.human_handoff_required};\n}\n\nconst inquiryReceipt=receipt('Read inquiry'),policyReceipt=receipt('Read policies'),researchReceipt=receipt('Read research'),crmReceipt=receipt('Read existing lead');\nconst inquiry=value(inquiryReceipt)??{},policies=value(policyReceipt)??{},research=value(researchReceipt)??{},crm=value(crmReceipt)??{};\nconst lead=crm.lead??crm.snapshot??crm;\nconst contact=inquiry.authorized_contact ?? inquiry.contact;\nconst recipient=typeof contact==='string'?contact:contact?.email??contact?.address;\nconst lead_id=inquiry.lead_id??inquiry.lead?.lead_id??lead.lead_id;\nconst facts=factsFrom(inquiry);\nconst prompts={budget_aed:'What is your approved automation budget in AED?',timeline_weeks:'Within how many weeks do you need to launch?',volume:'What is your monthly customer-support conversation volume?',languages:'Which languages must customer support handle?',crm:'Which CRM platform do you use?',channel:'Which support channel must be automated?',human_handoff:'Do you require handoff to a human agent?'};\nconst questions=Object.keys(prompts).filter(k=>facts[k]===undefined||facts[k]===null).map(k=>prompts[k]);\nconst authority=research.contact_authorized??research.authorized??research.is_authorized??research.contact_authority?.authorized;\nconst healthy=[inquiryReceipt,policyReceipt,researchReceipt,crmReceipt].every(e=>e.ok===true)&&!!recipient&&!!lead_id&&authority!==false;\nreturn {inquiry,policies,research,lead,lead_id,recipient,facts,questions,healthy,evidence_receipts:{inquiry:inquiryReceipt,policies:policyReceipt,research:researchReceipt,crm:crmReceipt} };\n\n})()) }}",
+        "options": {}
+      },
+      "id": "6b95b88d-b104-4064-8e9e-fde7a2f0d650",
+      "name": "Qualification context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1168,
+        416
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify((() => {\n\nfunction receipt(name) {\n try { const items=$(name).all(); const raw=items[items.length-1]?.json; const e=raw?.body??raw; return e?.ok!==undefined?e:(e?.result??e?.data??e??{ok:false,error:{message:'Empty receipt'} }); }\n catch(error) { return {ok:false,error:{message:'Stage not reached: '+name} }; }\n}\nfunction value(e) { return e?.ok===true?e.value:null; }\nfunction stage(name) { try { return $(name).first().json; } catch(error) { return null; } }\n\nfunction factsFrom(x) {\n const s=x?.qualification??x?.facts??x?.answers??x??{};\n const a=Array.isArray(s)?Object.fromEntries(s.filter(v=>v?.field&&v.value!==undefined).map(v=>[v.field,v.value])):s;\n return {budget_aed:a.budget_aed??a.budget,timeline_weeks:a.timeline_weeks??a.implementation_timeline_weeks??a.timeline,volume:a.volume??a.monthly_ticket_volume??a.monthly_tickets??a.monthly_conversations,languages:a.languages??a.required_languages,crm:a.crm??a.crm_platform,channel:a.channel??a.channels,human_handoff:a.human_handoff??a.human_handoff_required};\n}\n\nconst c=stage('Qualification context'),asked=receipt('Ask missing qualification');\nconst supplied=factsFrom(value(asked)),facts={...c.facts};\nfor(const [k,v] of Object.entries(supplied))if(v!==undefined&&v!==null)facts[k]=v;\nconst gaps=Object.keys(c.facts).filter(k=>facts[k]===undefined||facts[k]===null);\nfor(const k of ['budget_aed','timeline_weeks','volume']) {\n if(facts[k]!==undefined&&facts[k]!==null) {\n const n=typeof facts[k]==='number'?facts[k]:Number(String(facts[k]).replace(/,/g,''));\n if(Number.isFinite(n))facts[k]=n;else gaps.push(k+' numeric evidence');\n }\n}\nconst p=c.policies,q=p.qualification,cc=p.crm_contract,fc=p.followup_contract,comm=p.communication;\nconst reasons=[],caveats=[],capability_evidence=[];\nconst min=q?.minimum_budget_aed,max=q?.maximum_timeline_weeks;\nif(typeof min!=='number'||typeof max!=='number')gaps.push('numeric qualification policy');\nconst numeric_qualified=typeof facts.budget_aed==='number'&&typeof facts.timeline_weeks==='number'&&facts.budget_aed>=min&&facts.timeline_weeks<=max;\nif(!numeric_qualified)reasons.push('Numeric qualification criteria are not met.');\nconst wanted=[...[facts.channel,facts.crm].flat(),...(Array.isArray(facts.languages)?facts.languages:[facts.languages]),...(facts.human_handoff===true?['human_handoff']:[])].filter(x=>typeof x==='string'&&x.length);\nif(!Array.isArray(p.capabilities))gaps.push('capabilities policy');\nfor(const name of wanted) {\n const cap=p.capabilities?.find(v=>v.name===name); capability_evidence.push({name,support:cap?.support??null});\n if(cap?.support==='subject_to_assessment')caveats.push(name+' is subject to assessment; compatibility and scope are provisional.');\n else if(cap?.support!=='supported')reasons.push('Required capability '+name+' has unsupported or missing policy evidence.');\n}\nconst route=cc?.qualified_route,followup_route=fc?.qualified_route;\nconst contract_valid=Array.isArray(cc?.writable_fields)&&Array.isArray(cc?.protected_fields)&&cc.protected_fields.length>0&&['status','next_action','owner'].every(k=>typeof route?.[k]==='string'&&route[k].length)&&['type','status'].every(k=>typeof followup_route?.[k]==='string'&&followup_route[k].length);\nif(!contract_valid)gaps.push('CRM or follow-up route policy');\nconst communication_valid=typeof comm?.qualified_next_step==='string'&&comm.qualified_next_step.length>0&&Array.isArray(comm?.prohibited_commitments)&&typeof comm?.mention_capability_caveats==='boolean';\nif(!communication_valid)gaps.push('communication policy');\nif(c.questions.length&&asked.ok!==true)gaps.push('customer qualification receipt');\nconst ready=c.healthy&&numeric_qualified&&gaps.length===0&&reasons.length===0&&contract_valid&&communication_valid;\nconst changes={};\nif(Array.isArray(cc?.writable_fields)&&Array.isArray(cc?.protected_fields)) {\n for(const [k,v] of Object.entries(facts))if(v!==undefined&&v!==null&&cc.writable_fields.includes(k)&&!cc.protected_fields.includes(k))changes[k]=v;\n if(ready)for(const k of ['status','next_action','owner']) {\n if(cc.writable_fields.includes(k)&&!cc.protected_fields.includes(k))changes[k]=route[k];else gaps.push('Route field is not writable: '+k);\n }\n}\nconst safe_changes=c.healthy&&Object.keys(changes).length>0&&contract_valid&&(!c.questions.length||asked.ok===true);\nreturn {...c,facts,gaps,reasons,caveats,capability_evidence,numeric_qualified,fit:ready?(caveats.length?'provisional':'qualified'):'needs_review',ready:ready&&gaps.length===0,safe_changes,changes,crm_route:route??null,followup_route:followup_route??null,type:followup_route?.type,followStatus:followup_route?.status,policy_criteria:{minimum_budget_aed:min,maximum_timeline_weeks:max},qualification_receipt:c.questions.length?asked:null};\n\n})()) }}",
+        "options": {}
+      },
+      "id": "cf29ddf5-7d8a-4254-9db4-022ea6daaaaa",
+      "name": "Policy assessment",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1248,
+        416
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify((() => {\n\nfunction receipt(name) {\n try { const items=$(name).all(); const raw=items[items.length-1]?.json; const e=raw?.body??raw; return e?.ok!==undefined?e:(e?.result??e?.data??e??{ok:false,error:{message:'Empty receipt'} }); }\n catch(error) { return {ok:false,error:{message:'Stage not reached: '+name} }; }\n}\nfunction value(e) { return e?.ok===true?e.value:null; }\nfunction stage(name) { try { return $(name).first().json; } catch(error) { return null; } }\n\nconst c=stage('Qualification context'),a=stage('Policy assessment'),v=stage('CRM verification'),p=stage('Customer response plan');\nconst sent=receipt('Send customer response'),current=receipt('Read resulting state'),snapshot=value(current),lead=snapshot?.lead??snapshot?.snapshot??snapshot;\nconst changes=a?.changes??{},eq=(x,y)=>JSON.stringify(x)===JSON.stringify(y);\nconst mismatches=Object.keys(changes).filter(k=>!eq(lead?.[k],changes[k]));\nconst protectedFields=c?.policies?.crm_contract?.protected_fields??[];\nconst identity=protectedFields.filter(k=>!Object.hasOwn(c?.lead??{},k)||!Object.hasOwn(lead??{},k)||!eq(lead[k],c.lead[k]));\nconst response=value(sent),actual=response?.message??response?.response??response;\nconst response_mismatches=[];\nif(actual?.recipient!==undefined&&actual.recipient!==p?.recipient)response_mismatches.push('recipient');\nif(actual?.body!==undefined&&actual.body!==p?.body)response_mismatches.push('body');\nconst completed=c?.healthy===true&&a?.ready===true&&v?.verified===true&&p?.followup_verified===true&&sent.ok===true&&current.ok===true&&mismatches.length===0&&identity.length===0&&response_mismatches.length===0;\nconst remaining=[];\nif(p?.followup_verified)remaining.push('Discovery scheduling remains pending.','Discovery scope confirmation remains pending.');\nif(a?.caveats?.length)remaining.push(...a.caveats.map(x=>'Capability assessment remains: '+x));\nif(!c?.healthy)remaining.push('Resolve missing or failed evidence and authorized-contact identification.');\nif(a?.gaps?.length)remaining.push(...a.gaps.map(x=>'Resolve missing evidence: '+x));\nif(a?.reasons?.length)remaining.push(...a.reasons);\nif(!v?.verified)remaining.push('Complete CRM mutation and verify every changed and protected field.');\nif(!a?.ready)remaining.push('Confirm an evidence-supported route before follow-up or customer response; no alternative route is documented.');\nif(!p?.followup_verified)remaining.push('Create and verify a documented follow-up.');\nif(sent.ok!==true)remaining.push('Send and evidence the customer response.');\nif(current.ok!==true||mismatches.length||identity.length)remaining.push('Verify final CRM state.');\nif(response_mismatches.length)remaining.push('Resolve customer-response receipt mismatch.');\nconst report={lead_id:c?.lead_id??null,qualification_facts:a?.facts??c?.facts??{},research:c?.research??null,fit:a?.fit??'unassessed',numeric_qualified:a?.numeric_qualified??false,capability_evidence:a?.capability_evidence??[],capability_caveats:a?.caveats??[],policy_criteria:a?.policy_criteria??null,requested_crm_route:a?.crm_route??null,changes,update_receipt:v?.update_receipt??receipt('Update CRM'),verified_lead:lead??null,protected_fields:protectedFields,mismatches,protected_field_mismatches:identity,followup:{requested:p?.followup_requested??(a?{lead_id:a.lead_id,...a.followup_route}:null),receipt:p?.followup_receipt??receipt('Create follow-up')},customer_response:{recipient:p?.recipient??null,body:p?.body??null,receipt:sent,receipt_mismatches:response_mismatches},remaining_work:remaining};\nconst trace=[];\nfor(const name of ['Read inquiry','Read policies','Read research','Read existing lead','Ask missing qualification','Update CRM','Read CRM after update','Create follow-up','Send customer response','Read resulting state']) {\n try { for(const item of $(name).all())trace.push({timestamp:$now.toISO(),kind:name,data:{observation:item.json.body??item.json} }); }\n catch(error) { trace.push({timestamp:$now.toISO(),kind:name,data:{skipped:true,reason:'Stage not reached'} }); }\n}\nreturn {status:completed?'completed':'failed',final_answer:(completed?'Updated and verified all intended CRM fields and protected identity, created the policy-routed follow-up, and sent the authorized response. Fit is '+a.fit+'.':'Required actions are not fully evidenced; terminal failures and remaining work are retained.')+' Remaining work: '+remaining.join(' '),artifacts:[{name:'crm-qualification-report',media_type:'application/json',content:JSON.stringify(report)}],trace};\n\n})()) }}",
+        "options": {}
+      },
+      "id": "f6bf8acd-c5a0-4346-8e6f-2d86e096253a",
+      "name": "Completion audit",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2912,
+        384
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify((() => {\n\nfunction receipt(name) {\n try { const items=$(name).all(); const raw=items[items.length-1]?.json; const e=raw?.body??raw; return e?.ok!==undefined?e:(e?.result??e?.data??e??{ok:false,error:{message:'Empty receipt'} }); }\n catch(error) { return {ok:false,error:{message:'Stage not reached: '+name} }; }\n}\nfunction value(e) { return e?.ok===true?e.value:null; }\nfunction stage(name) { try { return $(name).first().json; } catch(error) { return null; } }\n\nconst a=stage('Policy assessment'),current=receipt('Read CRM after update'),update=receipt('Update CRM');\nconst snapshot=value(current),lead=snapshot?.lead??snapshot?.snapshot??snapshot;\nconst eq=(x,y)=>JSON.stringify(x)===JSON.stringify(y);\nconst mismatches=Object.keys(a.changes).filter(k=>!eq(lead?.[k],a.changes[k]));\nconst unexpected=a.policies.crm_contract.protected_fields.filter(k=>!Object.hasOwn(a.lead,k)||!Object.hasOwn(lead??{},k)||!eq(lead[k],a.lead[k]));\nconst verified=current.ok===true&&update.ok===true&&mismatches.length===0&&unexpected.length===0;\nreturn {...a,verified,mismatches,unexpected,verified_lead:lead??null,update_receipt:update,crm_readback_receipt:current};\n\n})()) }}",
+        "options": {}
+      },
+      "id": "0463a369-d2c1-49a4-997c-3e5b7c438b60",
+      "name": "CRM verification",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1776,
+        272
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify((() => {\n\nfunction receipt(name) {\n try { const items=$(name).all(); const raw=items[items.length-1]?.json; const e=raw?.body??raw; return e?.ok!==undefined?e:(e?.result??e?.data??e??{ok:false,error:{message:'Empty receipt'} }); }\n catch(error) { return {ok:false,error:{message:'Stage not reached: '+name} }; }\n}\nfunction value(e) { return e?.ok===true?e.value:null; }\nfunction stage(name) { try { return $(name).first().json; } catch(error) { return null; } }\n\nconst a=stage('CRM verification'),r=receipt('Create follow-up'),v=value(r),f=v?.followup??v?.follow_up??v;\nconst followup_verified=r.ok===true&&!!(f?.id??f?.followup_id??f?.follow_up_id)&&(f.lead_id===undefined||f.lead_id===a.lead_id)&&(f.type===undefined||f.type===a.followup_route.type)&&(f.status===undefined||f.status===a.followup_route.status);\nconst comm=a.policies.communication;\nconst summary=Object.entries(a.facts).map(([k,v])=>k.replace(/_/g,' ')+': '+(typeof v==='object'?JSON.stringify(v):String(v))).join('; ');\nconst caveatText=a.caveats.length?' Provisional fit: '+a.caveats.join(' '):' Required capabilities are supported by the current service policy.';\nconst constraints=comm.prohibited_commitments.map(v=>String(v)).join(', ');\nconst body='Thank you for your inquiry. We recorded '+summary+'. Your budget and timeline meet the documented qualification criteria.'+caveatText+' '+comm.qualified_next_step+' '+(followup_verified?'A follow-up has been created with status '+a.followup_route.status+'; scheduling and scope confirmation remain pending.':'Follow-up creation remains unverified.')+' We make no commitments regarding '+constraints+'.';\nreturn {...a,followup_verified,followup_receipt:r,followup_requested:{lead_id:a.lead_id,...a.followup_route},body,communication_constraints:comm};\n\n})()) }}",
+        "options": {}
+      },
+      "id": "6942df2c-f284-44c5-b1e1-811f25ba9210",
+      "name": "Customer response plan",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2080,
+        192
+      ],
+      "executeOnce": true
+    }
+  ],
+  "connections": {
+    "Start qualification": {
+      "main": [
+        [
+          {
+            "node": "Read inquiry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read inquiry": {
+      "main": [
+        [
+          {
+            "node": "Read policies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read policies": {
+      "main": [
+        [
+          {
+            "node": "Read research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read research": {
+      "main": [
+        [
+          {
+            "node": "Read existing lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evidence ready": {
+      "main": [
+        [
+          {
+            "node": "Missing qualification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completion audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Missing qualification": {
+      "main": [
+        [
+          {
+            "node": "Ask missing qualification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Policy assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Safe CRM changes": {
+      "main": [
+        [
+          {
+            "node": "Update CRM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completion audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update CRM": {
+      "main": [
+        [
+          {
+            "node": "Read CRM after update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM verified": {
+      "main": [
+        [
+          {
+            "node": "Create follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completion audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Follow-up verified": {
+      "main": [
+        [
+          {
+            "node": "Send customer response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completion audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send customer response": {
+      "main": [
+        [
+          {
+            "node": "Read resulting state",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read existing lead": {
+      "main": [
+        [
+          {
+            "node": "Qualification context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualification context": {
+      "main": [
+        [
+          {
+            "node": "Evidence ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask missing qualification": {
+      "main": [
+        [
+          {
+            "node": "Policy assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policy assessment": {
+      "main": [
+        [
+          {
+            "node": "Safe CRM changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Completion audit": {
+      "main": [
+        [
+          {
+            "node": "AutoWFBench submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read CRM after update": {
+      "main": [
+        [
+          {
+            "node": "CRM verification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM verification": {
+      "main": [
+        [
+          {
+            "node": "CRM verified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create follow-up": {
+      "main": [
+        [
+          {
+            "node": "Customer response plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Customer response plan": {
+      "main": [
+        [
+          {
+            "node": "Follow-up verified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read resulting state": {
+      "main": [
+        [
+          {
+            "node": "Completion audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "executionTimeout": 110,
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "nodeGroups": [
+    {
+      "id": "8b2a6bf3-6f65-4293-bd34-c0b9da21b010",
+      "name": "Gather evidence",
+      "nodeIds": [
+        "cbc0ee33-ee76-4cfa-9211-fcc22c470b4b",
+        "00458b2c-b2b3-438f-9622-017d77729db5",
+        "d78a78f0-80cb-419d-9aa3-ff3ea59e8f59",
+        "a1befab7-4230-4c2d-bde6-4b898e22f8a9",
+        "6b95b88d-b104-4064-8e9e-fde7a2f0d650",
+        "865dd37b-039d-4a36-b309-20e171d27494"
+      ],
+      "description": "Read public inquiry, policy, research and current lead; check authorized contact and prepare missing questions."
+    },
+    {
+      "id": "fde08d4e-f075-46ee-bb45-17e18d2d41a9",
+      "name": "Qualify and assess",
+      "nodeIds": [
+        "17c77cea-21d5-441b-bb99-21936d79f82f",
+        "18b6dc75-b4ad-4c8a-8125-021012b3d1bc",
+        "cf29ddf5-7d8a-4254-9db4-022ea6daaaaa",
+        "84f99fde-e855-4143-bcaf-99352545f0ae"
+      ],
+      "description": "Ask for missing facts once, apply policy criteria and map only supported CRM changes."
+    },
+    {
+      "id": "42ab226a-800c-4773-9a51-e0e43e0beace",
+      "name": "Update and verify CRM",
+      "nodeIds": [
+        "06faacf3-9c3a-49ec-8246-dd6875ab4c1f",
+        "5a284580-c4c9-4911-b48b-ab1576fd9079",
+        "0463a369-d2c1-49a4-997c-3e5b7c438b60",
+        "c19fe5c2-2b35-4faf-9ee2-f5b7b0a9bbdf"
+      ],
+      "description": "Recover bounded transient update failures and verify intended fields plus protected lead identity."
+    },
+    {
+      "id": "5084c325-bc5a-4d35-9372-7ae60d9f461f",
+      "name": "Create follow-up",
+      "nodeIds": [
+        "4e180ba4-c752-4b27-adf6-2a7e9f29dd77",
+        "6942df2c-f284-44c5-b1e1-811f25ba9210",
+        "c9f157cc-7a2e-4222-9965-51e22854a277"
+      ],
+      "description": "Create a policy-based follow-up and prepare a cautious customer response after checking the receipt."
+    },
+    {
+      "id": "57016fa8-0d17-48e8-b5c4-a8e9f923951b",
+      "name": "Respond and reread",
+      "nodeIds": [
+        "0c19b809-ae44-42d3-9a29-48f821575e76",
+        "f975847a-6274-4c02-9ac8-9a065e0d6b22"
+      ],
+      "description": "Send the authorized response and retrieve resulting state for verification."
+    },
+    {
+      "id": "e9c0fdfa-ddb2-4a75-b4ce-864dc9c0c5aa",
+      "name": "Completion contract",
+      "nodeIds": [
+        "f6bf8acd-c5a0-4346-8e6f-2d86e096253a",
+        "a8cb9b6f-bac5-47e9-8e87-ee255b1b5ce1"
+      ],
+      "description": "Audit completed and skipped actions, identify remaining work, and emit one AutoWFBench submission."
+    }
+  ],
+  "pinData": {},
+  "versionId": "2cffe148-081e-40aa-a735-24477414350d",
+  "activeVersionId": null,
+  "versionCounter": 19,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-10-07T13:45:40.821Z",
+      "createdAt": "2026-10-07T13:45:40.821Z",
+      "role": "workflow:owner",
+      "workflowId": "ZIjNzo9Gh4GI1bAv",
+      "projectId": "MhqIOvsBDsIyuMOt",
+      "project": {
+        "updatedAt": "2026-10-07T08:33:46.556Z",
+        "createdAt": "2026-10-07T08:33:08.482Z",
+        "id": "MhqIOvsBDsIyuMOt",
+        "name": "AutoWFBench Composer <composer@example.test>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "474e4ea2-ca93-4d6c-ba5a-b5f38198e479"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": "Updated Qualification context",
+    "description": "Updated nodes: Qualification context"
+  }
+}
