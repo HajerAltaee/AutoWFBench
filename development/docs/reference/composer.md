@@ -176,10 +176,21 @@ workflow completes the public-contract execution check. No validation/runtime
 error details beyond the Composer's own artifact are taken from the benchmark,
 and benchmark evaluation remains behind the existing numeric-only projection.
 
-The current CRM experiment remains an incomplete research result. Its MCP-authored
-workflow reaches the `Completion audit` Set node, where n8n 2.42.3's Tournament
-expression runtime rejects the expression with `null does not match type Pattern`.
-Consequently, that workflow has not reached benchmark scoring.
+The current preserved CRM artifact is the 22-node workflow
+`development/solutions/crm/composer-mcp-final/workflow.json`, authored and repaired
+through the official instance-level n8n MCP. It passes deterministic validation,
+pinned-runtime import, and public-stub execution. Three completed seed-0 runs scored
+4.66/10 with 10 tool calls; the most recent completed in 14.8957 seconds. The repeated
+score establishes the current baseline rather than a high-quality endpoint.
+
+The public execution trace exposed a simulator-contract problem: deterministic
+verification required exact routing values such as `Qualified`, `discovery_call`,
+and `sales_coordinator`, while the public policy tool did not publish those values
+as a structured contract. The environment now exposes structured capability states,
+CRM and follow-up routing, and communication constraints, and rejects conflicting
+values at tool-call time. This standardization changes the public environment, so a
+future score must be reported separately from the 4.66 baseline after regenerating
+the workflow against the new contract.
 
 Run all tests:
 
