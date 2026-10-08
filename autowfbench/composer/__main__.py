@@ -11,7 +11,7 @@ from autowfbench.composer.n8n_generator import N8nGenerator
 from autowfbench.composer.n8n_composition import McpCompositionRunner
 from autowfbench.composer.n8n_mcp_generator import OfficialN8nMcpGenerator
 from autowfbench.composer.n8n_runtime import N8nCliRuntime
-from autowfbench.composer.n8n_validation import issues_as_dicts, validate_n8n_workflow
+from autowfbench.composer.n8n_validation import issues_as_dicts, normalize_workflow_export, validate_n8n_workflow
 from autowfbench.core.common import read_json
 from autowfbench.composer.search import ComposerSearch
 from autowfbench.composer.simulation import SIMULATED_CHALLENGE, SimulatedEvaluator, SimulatedGenerator
@@ -156,7 +156,7 @@ def main():
         if not args.judge_url:
             raise SystemExit("A real judge URL is required for n8n-benchmark")
         challenge = load_challenge(args.challenge_id)["definition"]
-        workflow = read_json(args.workflow)
+        workflow = normalize_workflow_export(read_json(args.workflow))
         errors = issues_as_dicts(validate_n8n_workflow(workflow, challenge))
         if errors:
             raise SystemExit("Workflow failed deterministic validation: " + json.dumps(errors))
@@ -170,7 +170,7 @@ def main():
         return
     if args.command == "n8n-repair":
         challenge = load_challenge(args.challenge_id)["definition"]
-        workflow = read_json(args.workflow)
+        workflow = normalize_workflow_export(read_json(args.workflow))
         runtime = N8nCliRuntime()
         errors = issues_as_dicts(validate_n8n_workflow(workflow, challenge))
         if not errors:
@@ -189,7 +189,7 @@ def main():
         return
     if args.command == "n8n-validate":
         challenge = load_challenge(args.challenge_id)["definition"]
-        workflow = read_json(args.workflow)
+        workflow = normalize_workflow_export(read_json(args.workflow))
         runtime = N8nCliRuntime()
         errors = issues_as_dicts(validate_n8n_workflow(workflow, challenge))
         if not errors:

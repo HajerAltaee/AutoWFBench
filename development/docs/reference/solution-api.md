@@ -77,7 +77,7 @@ Authentication/protocol failures use HTTP error codes.
 | Operation | Arguments | Result |
 |---|---|---|
 | `inquiry.read` | `{}` | Customer inquiry, lead ID, authorized contact |
-| `documents.read` | `{}` | Service capabilities, qualification and communication policies |
+| `documents.read` | `{}` | Structured capabilities, qualification thresholds, CRM/follow-up routing, and communication constraints |
 | `research.read` | `{}` | Company profile and contact authority |
 | `customer.ask` | `{"questions":["..."]}` | Customer qualification facts; outbound question and inbound reply recorded |
 | `crm.read` | `{}` | Current lead snapshot |
@@ -88,6 +88,11 @@ Authentication/protocol failures use HTTP error codes.
 Writable CRM fields: `status`, `budget_aed`, `timeline_weeks`, `volume`, `languages`,
 `crm`, `channel`, `human_handoff`, `next_action`, `owner`. Use facts observed in the
 run; seed changes budget and volume. Protected identity fields cannot be changed.
+The document response publishes exact routing values for qualified leads and
+represents every capability as `{name, support}`, where support is `supported`,
+`unsupported`, or `subject_to_assessment`. The simulator rejects CRM routing and
+follow-up values that conflict with those public contracts instead of accepting an
+invalid action and revealing the mismatch only during final scoring.
 The mock customer returns a fixed fact set when asked; semantic assessment judges
 the relevance of the questions. This is not a generative customer simulator.
 

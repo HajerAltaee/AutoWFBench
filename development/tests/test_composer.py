@@ -8,7 +8,7 @@ from pathlib import Path
 from autowfbench.composer.candidate_runtime import local_step, resolve
 from autowfbench.composer.generator import child_prompt, initial_prompt
 from autowfbench.composer.models import NumericObservation, structural_complexity, validate_candidate
-from autowfbench.composer.n8n_validation import parse_workflow_json, validate_n8n_workflow
+from autowfbench.composer.n8n_validation import normalize_workflow_export, parse_workflow_json, validate_n8n_workflow
 from autowfbench.composer.n8n_mcp_generator import _mcp_trace, mcp_prompt
 from autowfbench.composer.n8n_composition import Structure, failure_category, structural_regression, workflow_structure
 from autowfbench.composer.search import ComposerSearch, select
@@ -78,13 +78,21 @@ class ComposerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_workflow_json('{"name":"one","name":"two"}')
 
+    def test_official_one_item_n8n_export_is_normalized(self):
+        value = native_workflow()
+        self.assertIs(normalize_workflow_export([value]), value)
+        self.assertEqual(normalize_workflow_export([]), [])
+
     def test_official_n8n_mcp_prompt_and_trace_preserve_boundary(self):
         challenge = {
             "id": "crm", "version": "1", "name": "CRM", "task": "Public task",
-            "limits": {}, "capabilities": ["inquiry.read"], "completion": "Return result",
+            "limits": {}, "capabilities": ["inquiry.read", "crm.update", "followup.create"], "completion": "Return result",
         }
         prompt = mcp_prompt(challenge)
         self.assertIn("official n8n MCP", prompt)
+        self.assertIn("HTTP 200 with\nok=false", prompt)
+        self.assertIn("status='pending_scheduling'", prompt)
+        self.assertIn("subject_to_assessment", prompt)
         self.assertNotIn("scorecard", json.dumps(challenge))
         events = "\n".join([
             json.dumps({"type": "item.completed", "item": {"type": "mcp_tool_call", "server": "n8n", "tool": "validate_workflow", "status": "completed"}}),

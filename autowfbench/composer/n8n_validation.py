@@ -67,6 +67,13 @@ def parse_workflow_json(text: str):
     return json.loads(text, object_pairs_hook=_reject_duplicate_keys)
 
 
+def normalize_workflow_export(value):
+    """Accept either one workflow object or the official one-item n8n export array."""
+    if isinstance(value, list) and len(value) == 1 and isinstance(value[0], dict):
+        return value[0]
+    return value
+
+
 def _reject_duplicate_keys(pairs):
     value = {}
     for key, item in pairs:

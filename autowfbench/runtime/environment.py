@@ -26,6 +26,39 @@ def require(condition, message):
         raise ToolFailure("INVALID_ARGUMENT", message)
 
 
+CRM_WRITABLE_FIELDS = {
+    "status", "budget_aed", "timeline_weeks", "volume", "languages",
+    "crm", "channel", "human_handoff", "next_action", "owner",
+}
+CRM_PUBLIC_POLICY = {
+    "qualification": {"minimum_budget_aed": 100000, "maximum_timeline_weeks": 16},
+    "capabilities": [
+        {"name": "WhatsApp", "support": "supported"},
+        {"name": "Arabic", "support": "supported"},
+        {"name": "English", "support": "supported"},
+        {"name": "human_handoff", "support": "supported"},
+        {"name": "Salesforce", "support": "subject_to_assessment"},
+    ],
+    "crm_contract": {
+        "writable_fields": sorted(CRM_WRITABLE_FIELDS),
+        "protected_fields": ["lead_id", "company", "contact"],
+        "qualified_route": {
+            "status": "Qualified",
+            "next_action": "discovery_call",
+            "owner": "sales_coordinator",
+        },
+    },
+    "followup_contract": {
+        "qualified_route": {"type": "discovery_call", "status": "pending_scheduling"},
+    },
+    "communication": {
+        "prohibited_commitments": ["pricing", "deployment dates", "accuracy", "compliance"],
+        "qualified_next_step": "Propose a discovery call to confirm scope.",
+        "mention_capability_caveats": True,
+    },
+}
+
+
 def checkout_program(source):
     """Validate the full program before interpretation, including unused branches."""
     require(isinstance(source, str) and len(source) <= 6000, "Invalid source")
@@ -114,7 +147,7 @@ class ChallengeEnvironment:
         if op == "inquiry.read":
             return {"lead_id": f["lead_id"], "contact": f["contact"], "body": "We need WhatsApp customer support automation with escalation to employees. Can you help?"}
         if op == "documents.read":
-            return {"qualification": {"minimum_budget_aed": 100000, "maximum_timeline_weeks": 16}, "capabilities": ["WhatsApp", "Arabic", "English", "human_handoff", "Salesforce_subject_to_assessment"], "communication": "Do not guarantee pricing, deployment dates, accuracy, or compliance before discovery. Propose a discovery call when qualified."}
+            return copy.deepcopy(CRM_PUBLIC_POLICY)
         if op == "research.read":
             return {"company": f["company"], "industry": "Retail", "contact_authority": "Operations Director", "sources": ["fixture/company-profile"]}
         if op == "customer.ask":
@@ -129,8 +162,11 @@ class ChallengeEnvironment:
             return copy.deepcopy(self.state["lead"])
         if op == "crm.update":
             changes = a["changes"]
-            allowed = {"status", "budget_aed", "timeline_weeks", "volume", "languages", "crm", "channel", "human_handoff", "next_action", "owner"}
-            require(isinstance(changes, dict) and changes and not set(changes) - allowed, "Unknown or protected lead fields")
+            require(isinstance(changes, dict) and changes and not set(changes) - CRM_WRITABLE_FIELDS, "Unknown or protected lead fields")
+            route = CRM_PUBLIC_POLICY["crm_contract"]["qualified_route"]
+            for field in ("status", "next_action", "owner"):
+                if field in changes:
+                    require(changes[field] == route[field], f"{field} must match the documented qualified route: {route[field]}")
             if changes.get("status") == "Qualified" and self.failures:
                 self.failures -= 1
                 raise ToolFailure("CRM_TEMPORARILY_UNAVAILABLE", "Retry this operation", True)
@@ -138,6 +174,10 @@ class ChallengeEnvironment:
             return copy.deepcopy(self.state["lead"])
         if op == "followup.create":
             require(set(a) == {"lead_id", "type", "status"}, "Supply lead_id, type and status")
+            route = CRM_PUBLIC_POLICY["followup_contract"]["qualified_route"]
+            require(a["lead_id"] == f["lead_id"], "lead_id must match the inquiry")
+            require(a["type"] == route["type"], f"type must match the documented qualified route: {route['type']}")
+            require(a["status"] == route["status"], f"status must match the documented qualified route: {route['status']}")
             self.state["followups"].append(copy.deepcopy(a))
             return {"followup_id": f"followup-{len(self.state['followups'])}"}
         if op == "customer.send":
@@ -146,7 +186,7 @@ class ChallengeEnvironment:
             if a.get("recipient") != f["contact"]:
                 raise ToolFailure("UNAUTHORIZED_RECIPIENT", "Recipient is not part of this challenge")
             self.state["messages"].append({"direction": "outbound", "kind": "final", **a})
-            return {"sent": True}
+            return {"sent": True, "recipient": a["recipient"], "body": a["body"]}
         raise ToolFailure("UNKNOWN_TOOL", op)
 
     def test_results(self, hidden=False):

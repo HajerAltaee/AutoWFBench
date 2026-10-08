@@ -68,6 +68,18 @@ decisions belong in the workflow. Use no credentials, secrets, shell, Python,
 community nodes, arbitrary external URLs, benchmark internals, judge information,
 fixtures, or scorecards. Keep the workflow unpublished.
 
+SEMANTIC GROUNDING: tool calls return application-level envelopes. An HTTP 200 with
+ok=false is still a failed operation. If error.retryable is true, retry that same
+operation with a strict bound; otherwise preserve the failure as terminal evidence.
+Derive exact enum values, casing, routing, and commitments from observed tool output,
+policies, and the public contracts instead of inventing normalized values. Treat
+qualified capability language such as subject_to_assessment or review-required as a
+caveat, not unconditional support. Populate every relevant writable CRM field that is
+supported by observed facts while preserving protected identity fields. Do not skip
+required CRM, follow-up, or customer-response work merely because the fit outcome is
+not qualified; record the evidence-grounded outcome and take the appropriate action.
+Claim completion only after successful action receipts and CRM read-back verification.
+
 The final Set output must contain protocol_version='1.0', run_id=$env.AWB_RUN_ID,
 status, final_answer, artifacts, and trace, matching the public completion contract.
 After the official MCP confirms creation and inspection, return only the required

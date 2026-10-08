@@ -152,6 +152,22 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(second.state["lead"]["status"], "New")
         self.assertFalse(first.finalize()["checks"]["correct_lead"])
 
+    def test_crm_environment_exposes_and_enforces_public_routes(self):
+        env = ChallengeEnvironment(load_challenge(CRM), 0)
+        policy = env.execute("documents.read", {})["value"]
+        self.assertEqual(policy["crm_contract"]["qualified_route"], {
+            "status": "Qualified", "next_action": "discovery_call", "owner": "sales_coordinator",
+        })
+        self.assertIn({"name": "Salesforce", "support": "subject_to_assessment"}, policy["capabilities"])
+        bad_crm = env.execute("crm.update", {"changes": {"status": "qualified"}})
+        self.assertFalse(bad_crm["ok"])
+        self.assertIn("Qualified", bad_crm["error"]["message"])
+        bad_followup = env.execute("followup.create", {
+            "lead_id": env.fixtures["lead_id"], "type": "meeting", "status": "open",
+        })
+        self.assertFalse(bad_followup["ok"])
+        self.assertIn("discovery_call", bad_followup["error"]["message"])
+
     def test_checkout_rejects_arbitrary_python_and_baseline_fails(self):
         for source in ("import os\nos.system('echo unsafe')", "def checkout(amount, currency):\n    return eval(amount)"):
             with self.assertRaises(ToolFailure): checkout_program(source)
