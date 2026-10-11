@@ -25,7 +25,7 @@ are approved.
 - [x] Sapiens `test_routines.py` on Windows
 - [x] Sapiens `tests.test_windows` on Windows
 - [x] Composer public-input discovery for SimSpot
-- [ ] Native n8n smoke test
+- [x] Docker n8n 2.42.3 -> Windows-hosted SimSpot authenticated smoke test
 - [ ] Live Sapiens-to-SimSpot relay test
 - [ ] Owner-approved lock refresh
 - [ ] Development Composer attempts
@@ -34,9 +34,11 @@ are approved.
 ## Known blockers
 
 1. Sapiens does not yet document a completed-turn callback/read contract for a relay.
-2. `n8n@2.42.3` currently declares Node `>=24`, while this repository says Node 22.
-   On this Windows host, Node 24 installation reaches `isolated-vm` and requires
-   Visual Studio C++ build tools; portable Node 22 is rejected by the package engine.
+2. Direct Windows installation is still inconsistent: `n8n@2.42.3` declares Node
+   `>=24`, while this repository says Node 22, and `isolated-vm` needs C++ build
+   tools when no compatible binary is available. The pinned Docker image is a
+   verified Windows development path: it reached host SimSpot through
+   `host.docker.internal`, authenticated, read the inquiry and completed `Submit`.
 3. The benchmark lock correctly remains red until an owner approves the new challenge
    version and refreshes the four changed protected hashes.
 
@@ -45,8 +47,8 @@ are approved.
 - Is the deterministic simulator boundary appropriate for Sapiens customer personas?
 - Should summary-only consent permit a generated narrative, or structured fields only?
 - Is the relay the approved live integration direction?
-- Should the repository move to Node 24 and document Windows C++ prerequisites, or
-  pin an n8n release that installs on the documented Node 22 runtime?
+- Should Docker become the documented Windows n8n path, with direct Node installation
+  retained only for environments that already satisfy n8n's native dependencies?
 
 ## Protected files awaiting approval
 

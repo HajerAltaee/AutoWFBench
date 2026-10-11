@@ -79,8 +79,17 @@ MVP does not fabricate one.
 The uncommitted design options and security constraints are recorded in
 `documentation/sapiens-simspot-relay-proposal.md`.
 
-At the time of the Windows smoke check, the pinned `n8n@2.42.3` package declared
-Node `>=24`, while this repository's README required Node 22. Node 24 installation
-failed while compiling `isolated-vm` because Visual Studio C++ build tools were not
-installed; a verified portable Node 22 runtime was rejected by the package engine.
-No system-wide compiler or unsupported npm workaround was installed.
+The pinned `docker.n8n.io/n8nio/n8n:2.42.3` image was verified on Windows with
+Docker Desktop. A disposable, non-scored workflow ran n8n in Linux, reached a
+Windows-hosted SimSpot environment through `host.docker.internal`, authenticated
+with a smoke-only run token, read the seeded inquiry and completed its `Submit` node.
+No Composer generation, judge, benchmark lock update or scored run was involved.
+
+Docker avoids the direct Windows installation mismatch: `n8n@2.42.3` declares Node
+`>=24`, while this repository's README currently says Node 22, and its `isolated-vm`
+dependency may require Visual Studio C++ build tools when installed natively. No
+system-wide compiler or unsupported npm workaround was installed. A full benchmark
+runner still needs an agreed Docker wrapper for mapping per-run files and rewriting
+the environment URL from host loopback to `host.docker.internal`; the smoke test
+proves the container-to-SimSpot transport, not the still-unapproved live Sapiens
+relay.
