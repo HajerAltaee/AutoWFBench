@@ -8,8 +8,8 @@ the existing run-scoped SimApp transport: authenticated `GET /apps`, then typed
 Every benchmark run receives fresh state and is frozen before scoring.
 
 Sapiens4 is the customer-behaviour runtime. On Sapiens4 `main` at `71e93cb`, a
-Scheduled Routine is an agent-owned persisted schedule, not a webhook or simulator
-callback. Its existing host-control operations are:
+Scheduled Routine is an agent-owned persisted schedule that delivers its saved
+objective through the existing Sapiens turn behavior. Its host-control operations are:
 
 - `routines()`
 - `routine_create(minutes,prompt)`
@@ -19,9 +19,10 @@ callback. Its existing host-control operations are:
 
 The loopback HTTP API accepts those operations at
 `POST /api/agents/<agent-id>/control` with JSON and `X-Sapiens-Local: 1`. A routine
-injects its saved prompt into its owner Sapi when due. The five case fixtures include
-repeatable routine prompts, but AutoWFBench does not copy Sapiens scheduling code or
-invent a callback API.
+injects its saved objective into its owner Sapi when due. The workflow-authored
+objective is therefore the integration boundary; no separate completed-turn relay or
+callback is required. The five case fixtures include repeatable Routine objectives,
+and AutoWFBench does not copy Sapiens scheduling code.
 
 ## MVP flow
 
@@ -70,14 +71,10 @@ python -m unittest tests.test_windows -v
 ```
 
 The deterministic AutoWFBench fixture deliberately runs without Sapiens/Codex model
-calls. A live end-to-end customer Sapi still needs an owner decision about the bridge:
-either the Sapi directly calls authenticated SimSpot operations during a benchmark
-run, or an adapter relays Sapiens turn output into `customer.ask`. Sapiens currently
-documents neither a routine callback nor a stable customer-response adapter, so this
-MVP does not fabricate one.
-
-The uncommitted design options and security constraints are recorded in
-`documentation/sapiens-simspot-relay-proposal.md`.
+calls. It mirrors the same case facts and topic gating so benchmark runs stay
+repeatable, while the Sapiens suites verify real Routine scheduling and delivery.
+The confirmed responsibility and security boundaries are recorded in
+`documentation/sapiens-simspot-integration.md`.
 
 The pinned `docker.n8n.io/n8nio/n8n:2.42.3` image was verified on Windows with
 Docker Desktop. A disposable, non-scored workflow ran n8n in Linux, reached a
@@ -96,4 +93,5 @@ workspace per run, maps host loopback URLs to `host.docker.internal`, preserves 
 redaction and removes a named container on cancellation. A non-scored Windows run
 completed all five SimSpot cases with every deterministic check passing (8/8 points)
 and exactly ten business calls per case. This verifies AutoWFBench -> Docker n8n ->
-SimSpot; it does not imply that the still-unapproved live Sapiens relay exists.
+SimSpot. Sapiens uses the workflow-authored Routine objective; no additional relay is
+part of the design.

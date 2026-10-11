@@ -1,7 +1,7 @@
-# Draft pull request: Add SimSpot customer-discovery MVP
+# Pull request notes: Add SimSpot customer-discovery MVP
 
-Draft only. Do not publish until the challenge version and protected benchmark files
-are approved.
+PR #9 remains a draft while the MVP is reviewed. The challenge version and benchmark
+lock refresh are owner-approved and included on the branch.
 
 ## Summary
 
@@ -14,8 +14,8 @@ are approved.
   scripted local protocol fixture;
 - make environment startup and benchmark-lock verification work correctly with
   Windows pipes and CRLF checkouts;
-- document the existing Sapiens Routine boundary and a proposed credential-isolating
-  relay without inventing an approved callback API.
+- document the confirmed Sapiens boundary: the Routine delivers the workflow-authored
+  objective, with no separate response relay or callback API.
 
 ## Test plan
 
@@ -28,16 +28,15 @@ are approved.
 - [x] Docker n8n 2.42.3 -> Windows-hosted SimSpot authenticated smoke test
 - [x] Full Docker runner across all five SimSpot cases (8/8 deterministic points,
   10 calls per case, judging disabled)
-- [ ] Live Sapiens-to-SimSpot relay test
-- [ ] Owner-approved lock refresh
+- [x] Sapiens objective-delivery boundary confirmed; no separate relay required
+- [x] Owner-approved `v0.1.0` challenge registration and lock refresh
 - [ ] Development Composer attempts
 - [ ] Held-out/scored runs
 
-## Known blockers
+## Remaining work
 
-1. Sapiens does not yet document a completed-turn callback/read contract for a relay.
-2. The benchmark lock correctly remains red until an owner approves the new challenge
-   version and refreshes the four changed protected hashes.
+- Run development Composer attempts after review of the MVP boundary.
+- Run held-out/scored benchmarks only after local Composer integration passes.
 
 Direct Windows installation remains a portability caveat: `n8n@2.42.3` declares
 Node `>=24`, and `isolated-vm` needs C++ build tools when no compatible binary is
@@ -47,11 +46,11 @@ available. The tested Docker runner is the documented Windows path.
 
 - Is the deterministic simulator boundary appropriate for Sapiens customer personas?
 - Should summary-only consent permit a generated narrative, or structured fields only?
-- Is the relay the approved live integration direction?
+- Does the documented workflow-objective boundary match the intended Sapiens usage?
 - Should Docker become the documented Windows n8n path, with direct Node installation
   retained only for environments that already satisfy n8n's native dependencies?
 
-## Protected files awaiting approval
+## Protected files included in the approved lock refresh
 
 - `autowfbench/interfaces/cli.py`
 - `autowfbench/runtime/engine.py`
