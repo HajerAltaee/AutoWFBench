@@ -4,7 +4,8 @@ Sol 6.1 composes native n8n workflows for two stateful simApps challenges:
 CRM qualification, SimSpot customer discovery and checkout repair. One composer; no
 task-specific templates.
 
-Requires Python 3.11+, Node 22+, authenticated Codex and n8n **2.42.3**.
+Requires Python 3.11+, authenticated Codex and n8n **2.42.3**. Use either a
+native `N8N_BIN` installation or the pinned Docker image.
 
 ```sh
 pip install -e .
@@ -13,6 +14,17 @@ export N8N_BIN="$PWD/.runtime/node_modules/.bin/n8n"
 # Optional: export CODEX_BIN=/path/to/working/codex
 python -m autowfbench compose all --data-dir runs/composer
 ```
+
+On Windows, Docker avoids native Node and C++ build-tool dependencies:
+
+```powershell
+$env:N8N_DOCKER_IMAGE = 'docker.n8n.io/n8nio/n8n:2.42.3'
+python -m autowfbench evaluate simspot-customer-discovery path\to\workflow.json
+```
+
+Docker execution uses a fresh bind-mounted n8n workspace for each run and maps
+host loopback SimApp URLs to `host.docker.internal`. Run-scoped tokens remain
+redacted from retained logs.
 
 Generation uses `codex exec --model gpt-6.1-sol`, public tasks/API docs, read-only
 development observations and at most

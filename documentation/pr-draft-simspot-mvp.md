@@ -26,6 +26,8 @@ are approved.
 - [x] Sapiens `tests.test_windows` on Windows
 - [x] Composer public-input discovery for SimSpot
 - [x] Docker n8n 2.42.3 -> Windows-hosted SimSpot authenticated smoke test
+- [x] Full Docker runner across all five SimSpot cases (8/8 deterministic points,
+  10 calls per case, judging disabled)
 - [ ] Live Sapiens-to-SimSpot relay test
 - [ ] Owner-approved lock refresh
 - [ ] Development Composer attempts
@@ -34,13 +36,12 @@ are approved.
 ## Known blockers
 
 1. Sapiens does not yet document a completed-turn callback/read contract for a relay.
-2. Direct Windows installation is still inconsistent: `n8n@2.42.3` declares Node
-   `>=24`, while this repository says Node 22, and `isolated-vm` needs C++ build
-   tools when no compatible binary is available. The pinned Docker image is a
-   verified Windows development path: it reached host SimSpot through
-   `host.docker.internal`, authenticated, read the inquiry and completed `Submit`.
-3. The benchmark lock correctly remains red until an owner approves the new challenge
+2. The benchmark lock correctly remains red until an owner approves the new challenge
    version and refreshes the four changed protected hashes.
+
+Direct Windows installation remains a portability caveat: `n8n@2.42.3` declares
+Node `>=24`, and `isolated-vm` needs C++ build tools when no compatible binary is
+available. The tested Docker runner is the documented Windows path.
 
 ## Review focus
 

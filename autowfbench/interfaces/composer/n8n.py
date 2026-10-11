@@ -8,7 +8,9 @@ import socket
 import subprocess
 import tempfile
 import time
+import uuid
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 from autowfbench.core.common import save_json
 from autowfbench.core.contracts import validate
@@ -74,13 +76,45 @@ def validate_workflow(workflow, apps):
 
 
 class N8nRuntime:
-    def __init__(self, binary=None):
-        self.binary = binary or os.environ.get("N8N_BIN") or shutil.which("n8n")
+    def __init__(self, binary=None, docker_image=None):
+        self.docker_image = docker_image or (None if binary else os.environ.get("N8N_DOCKER_IMAGE"))
+        self.binary = shutil.which("docker") if self.docker_image else binary or os.environ.get("N8N_BIN") or shutil.which("n8n")
         if not self.binary:
-            raise ValueError("Set N8N_BIN to n8n@" + VERSION)
-        version = subprocess.check_output([self.binary, "--version"], text=True, timeout=30).strip()
+            raise ValueError("Set N8N_BIN to n8n@" + VERSION + " or N8N_DOCKER_IMAGE to its pinned image")
+        version_command = [self.binary, "run", "--rm", self.docker_image, "--version"] if self.docker_image else [self.binary, "--version"]
+        version = subprocess.check_output(version_command, text=True, timeout=120).strip()
         if version != VERSION:
             raise ValueError(f"Expected n8n {VERSION}; found {version}")
+
+    def _runtime_request(self, request):
+        request = copy.deepcopy(request)
+        if not self.docker_image:
+            return request
+        parts = urlsplit(request["environment"]["base_url"])
+        if parts.hostname not in ("127.0.0.1", "localhost", "::1"):
+            return request
+        host = "host.docker.internal" + ((":" + str(parts.port)) if parts.port else "")
+        request["environment"]["base_url"] = urlunsplit((parts.scheme, host, parts.path, parts.query, parts.fragment))
+        return request
+
+    def _command(self, args, tmp, container_name):
+        if not self.docker_image:
+            return [self.binary, *args]
+        mapped = ["--input=/workspace/" + Path(arg.removeprefix("--input=")).name if arg.startswith("--input=") else arg for arg in args]
+        settings = {
+            "N8N_USER_FOLDER":"/workspace",
+            "N8N_DIAGNOSTICS_ENABLED":"false",
+            "N8N_VERSION_NOTIFICATIONS_ENABLED":"false",
+            "N8N_LOG_LEVEL":"info",
+            "N8N_BLOCK_ENV_ACCESS_IN_NODE":"true",
+            "N8N_RUNNERS_BROKER_PORT":"5679",
+            "N8N_COMMUNITY_PACKAGES_ENABLED":"false",
+            "N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS":"false",
+        }
+        command = [self.binary, "run", "--rm", "--name", container_name, "-v", str(tmp.resolve()) + ":/workspace", "-w", "/workspace"]
+        for key, value in settings.items():
+            command.extend(("-e", key + "=" + value))
+        return [*command, self.docker_image, *mapped]
 
     def execute(self, workflow, request, cancelled, directory):
         directory = Path(directory)
@@ -90,11 +124,12 @@ class N8nRuntime:
         def redact(text):
             return text.replace(token, "[RUN_TOKEN]")
         workflow = copy.deepcopy(workflow)
+        runtime_request = self._runtime_request(request)
         workflow.update(id="awbGeneratedWorkflow", active=False, settings={"executionOrder":"v1", "executionTimeout":request["limits"]["wall_clock_seconds"]})
         workflow.pop("pinData", None)
         for node in workflow["nodes"]:
             if node["name"] == "Context":
-                node["parameters"] = {"mode":"raw", "jsonOutput":json.dumps(request), "options":{}}
+                node["parameters"] = {"mode":"raw", "jsonOutput":json.dumps(runtime_request), "options":{}}
             if node["type"] == "n8n-nodes-base.httpRequest":
                 node["parameters"].setdefault("options", {}).update(timeout=10000, redirect={"redirect":{"followRedirects":False}})
         with tempfile.TemporaryDirectory(prefix="n8n-", dir=directory) as tmp:
@@ -107,9 +142,10 @@ class N8nRuntime:
             env.update(N8N_USER_FOLDER=str(tmp), N8N_DIAGNOSTICS_ENABLED="false", N8N_VERSION_NOTIFICATIONS_ENABLED="false", N8N_LOG_LEVEL="info", N8N_BLOCK_ENV_ACCESS_IN_NODE="true", N8N_RUNNERS_BROKER_PORT=broker_port, N8N_COMMUNITY_PACKAGES_ENABLED="false", N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS="true")
             def command(args, name):
                 started = time.monotonic()
+                container_name = "awb-n8n-" + uuid.uuid4().hex[:16]
                 # Separate process group ensures cancellation also stops task runners.
                 with (tmp / "stdout").open("w+") as out, (tmp / "stderr").open("w+") as err:
-                    proc = subprocess.Popen([self.binary, *args], cwd=tmp, env=env, stdout=out, stderr=err, start_new_session=True)
+                    proc = subprocess.Popen(self._command(args, tmp, container_name), cwd=tmp, env=env, stdout=out, stderr=err, start_new_session=True)
                     try:
                         while proc.poll() is None:
                             if cancelled.is_set() or time.monotonic()-started > request["limits"]["wall_clock_seconds"]:
@@ -117,8 +153,14 @@ class N8nRuntime:
                             time.sleep(.1)
                     finally:
                         if proc.poll() is None:
-                            os.killpg(proc.pid, signal.SIGKILL)
-                            proc.wait()
+                            if self.docker_image:
+                                subprocess.run([self.binary, "rm", "-f", container_name], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+                            if proc.poll() is None:
+                                if os.name == "nt":
+                                    proc.kill()
+                                else:
+                                    os.killpg(proc.pid, signal.SIGKILL)
+                                proc.wait()
                         out.seek(0); err.seek(0)
                         stdout, stderr = out.read(), err.read()
                         (directory / (name+".stdout.log")).write_text(redact(stdout))

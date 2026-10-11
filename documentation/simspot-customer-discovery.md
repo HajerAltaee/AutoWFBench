@@ -86,10 +86,14 @@ with a smoke-only run token, read the seeded inquiry and completed its `Submit` 
 No Composer generation, judge, benchmark lock update or scored run was involved.
 
 Docker avoids the direct Windows installation mismatch: `n8n@2.42.3` declares Node
-`>=24`, while this repository's README currently says Node 22, and its `isolated-vm`
-dependency may require Visual Studio C++ build tools when installed natively. No
-system-wide compiler or unsupported npm workaround was installed. A full benchmark
-runner still needs an agreed Docker wrapper for mapping per-run files and rewriting
-the environment URL from host loopback to `host.docker.internal`; the smoke test
-proves the container-to-SimSpot transport, not the still-unapproved live Sapiens
-relay.
+`>=24`, and its `isolated-vm` dependency may require Visual Studio C++ build tools
+when installed natively. No
+system-wide compiler or unsupported npm workaround was installed.
+
+The full AutoWFBench n8n adapter now supports the pinned image when
+`N8N_DOCKER_IMAGE=docker.n8n.io/n8nio/n8n:2.42.3` is set. It creates a fresh mounted
+workspace per run, maps host loopback URLs to `host.docker.internal`, preserves log
+redaction and removes a named container on cancellation. A non-scored Windows run
+completed all five SimSpot cases with every deterministic check passing (8/8 points)
+and exactly ten business calls per case. This verifies AutoWFBench -> Docker n8n ->
+SimSpot; it does not imply that the still-unapproved live Sapiens relay exists.

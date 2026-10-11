@@ -1,7 +1,11 @@
 import copy
+import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from autowfbench.interfaces.composer.n8n import validate_workflow
+from autowfbench.interfaces.composer.n8n import N8nRuntime, validate_workflow
 from autowfbench.interfaces.composer.graph import compile_graph
 from autowfbench.runtime.environment.apps import catalog
 
@@ -15,6 +19,29 @@ def workflow():
 
 
 class ComposerTests(unittest.TestCase):
+    def test_docker_runtime_uses_pinned_image_and_maps_run_files(self):
+        image = "docker.n8n.io/n8nio/n8n:2.42.3"
+        with patch.dict(os.environ, {"N8N_DOCKER_IMAGE": image}), \
+             patch("autowfbench.interfaces.composer.n8n.shutil.which", return_value="docker"), \
+             patch("autowfbench.interfaces.composer.n8n.subprocess.check_output", return_value="2.42.3") as version:
+            runtime = N8nRuntime()
+        version.assert_called_once_with(["docker", "run", "--rm", image, "--version"], text=True, timeout=120)
+        with tempfile.TemporaryDirectory() as tmp:
+            command = runtime._command(["import:workflow", "--input=" + str(Path(tmp) / "workflow.json")], Path(tmp), "awb-test")
+        self.assertEqual(command[:5], ["docker", "run", "--rm", "--name", "awb-test"])
+        self.assertIn(str(Path(tmp).resolve()) + ":/workspace", command)
+        self.assertEqual(command[-2:], ["import:workflow", "--input=/workspace/workflow.json"])
+
+    def test_docker_runtime_rewrites_loopback_without_mutating_request(self):
+        runtime = object.__new__(N8nRuntime)
+        runtime.docker_image = "n8n:2.42.3"
+        request = {"environment":{"base_url":"http://127.0.0.1:8123","access_token":"test"}}
+        rewritten = runtime._runtime_request(request)
+        self.assertEqual(rewritten["environment"]["base_url"], "http://host.docker.internal:8123")
+        self.assertEqual(request["environment"]["base_url"], "http://127.0.0.1:8123")
+        request["environment"]["base_url"] = "https://simspot.example/api"
+        self.assertEqual(runtime._runtime_request(request)["environment"]["base_url"], "https://simspot.example/api")
+
     def test_typed_graph_compiles_native_http_and_keeps_code_unchanged(self):
         code = r"const pattern = /\s+/; return [{json: {message: 'literal code'}}];"
         g={'name':'typed','nodes':[
