@@ -1,0 +1,56 @@
+# Draft pull request: Add SimSpot customer-discovery MVP
+
+Draft only. Do not publish until the challenge version and protected benchmark files
+are approved.
+
+## Summary
+
+- add a fixture-driven `simspot-customer-discovery` challenge with five customer
+  personas and edge cases;
+- expose typed SimSpot discovery, contact, follow-up and messaging operations;
+- verify duplicate selection, explicit consent, separate requirements confirmation,
+  readback ordering, customer contact and call efficiency;
+- connect the challenge to the generic AutoWFBench CLI, Composer discovery and
+  scripted local protocol fixture;
+- make environment startup and benchmark-lock verification work correctly with
+  Windows pipes and CRLF checkouts;
+- document the existing Sapiens Routine boundary and a proposed credential-isolating
+  relay without inventing an approved callback API.
+
+## Test plan
+
+- [x] `python -m unittest development.tests.test_simspot -v`
+- [x] `python -m unittest discover -s development/tests -v`
+- [x] Real child-process/authenticated HTTP SimSpot run on Windows
+- [x] Sapiens `test_routines.py` on Windows
+- [x] Sapiens `tests.test_windows` on Windows
+- [x] Composer public-input discovery for SimSpot
+- [ ] Native n8n smoke test
+- [ ] Live Sapiens-to-SimSpot relay test
+- [ ] Owner-approved lock refresh
+- [ ] Development Composer attempts
+- [ ] Held-out/scored runs
+
+## Known blockers
+
+1. Sapiens does not yet document a completed-turn callback/read contract for a relay.
+2. `n8n@2.42.3` currently declares Node `>=24`, while this repository says Node 22.
+   On this Windows host, Node 24 installation reaches `isolated-vm` and requires
+   Visual Studio C++ build tools; portable Node 22 is rejected by the package engine.
+3. The benchmark lock correctly remains red until an owner approves the new challenge
+   version and refreshes the four changed protected hashes.
+
+## Review focus
+
+- Is the deterministic simulator boundary appropriate for Sapiens customer personas?
+- Should summary-only consent permit a generated narrative, or structured fields only?
+- Is the relay the approved live integration direction?
+- Should the repository move to Node 24 and document Windows C++ prerequisites, or
+  pin an n8n release that installs on the documented Node 22 runtime?
+
+## Protected files awaiting approval
+
+- `autowfbench/interfaces/cli.py`
+- `autowfbench/runtime/engine.py`
+- `autowfbench/runtime/environment/apps.py`
+- `autowfbench/runtime/environment/state.py`

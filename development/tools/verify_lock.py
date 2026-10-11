@@ -8,7 +8,10 @@ lock = json.loads((ROOT / "benchmark-lock.json").read_text())
 changed = []
 for name, expected in lock["files"].items():
     path = ROOT / name
-    actual = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+    # Git may materialize text files as CRLF on Windows; the lock records the
+    # repository's canonical LF bytes. Normalizing only CRLF keeps content edits
+    # detectable without making the owner gate platform-dependent.
+    actual = hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest() if path.is_file() else None
     if actual != expected:
         changed.append(name)
 if changed:

@@ -31,7 +31,7 @@ def main():
     p = sub.add_parser("validate-submission")
     p.add_argument("file", type=Path)
     p = sub.add_parser("compose")
-    p.add_argument("challenge_id", choices=("all", "crm-lead-qualification", "production-checkout-recovery"))
+    p.add_argument("challenge_id", choices=("all", "crm-lead-qualification", "simspot-customer-discovery", "production-checkout-recovery"))
     p.add_argument("--data-dir", type=Path, default=Path("runs/composer"))
     p.add_argument("--attempts", type=int, choices=range(1, 6), default=3)
     p.add_argument("--repeats", type=int, choices=range(1, 4), default=2)
@@ -45,7 +45,7 @@ def main():
     if args.command in ("compose", "evaluate"):
         from autowfbench.interfaces.composer.search import compose, evaluate, public_input
         from autowfbench.interfaces.composer.n8n import N8nRuntime, validate_workflow
-        challenges = ("crm-lead-qualification", "production-checkout-recovery") if args.challenge_id == "all" else (args.challenge_id,)
+        challenges = ("crm-lead-qualification", "simspot-customer-discovery", "production-checkout-recovery") if args.challenge_id == "all" else (args.challenge_id,)
         for challenge in challenges:
             directory = args.data_dir.resolve() / challenge
             if args.command == "compose":

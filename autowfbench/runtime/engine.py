@@ -37,11 +37,20 @@ class EnvironmentProcess:
         env.update(AWB_RUN_TOKEN=self.run_token, AWB_ENV_ADMIN_TOKEN=self.admin_token, PYTHONPATH=str(ROOT))
         self.proc = subprocess.Popen([sys.executable, "-m", "autowfbench", "environment", challenge_id, "--seed", str(seed), "--host", bind_host], env=env, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
-            with selectors.DefaultSelector() as selector:
-                selector.register(self.proc.stdout, selectors.EVENT_READ)
-                if not selector.select(timeout=30):
+            if os.name == "nt":
+                import queue
+                ready = queue.Queue(maxsize=1)
+                threading.Thread(target=lambda: ready.put(self.proc.stdout.readline()), daemon=True).start()
+                try:
+                    line = ready.get(timeout=30)
+                except queue.Empty:
                     raise ValueError("Environment startup timed out")
-                line = self.proc.stdout.readline()
+            else:
+                with selectors.DefaultSelector() as selector:
+                    selector.register(self.proc.stdout, selectors.EVENT_READ)
+                    if not selector.select(timeout=30):
+                        raise ValueError("Environment startup timed out")
+                    line = self.proc.stdout.readline()
             if not line:
                 raise ValueError("Environment failed to start: " + self.proc.stderr.read(2000))
             port = json.loads(line)["port"]

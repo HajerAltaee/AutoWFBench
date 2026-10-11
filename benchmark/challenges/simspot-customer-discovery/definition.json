@@ -1,0 +1,22 @@
+{
+  "id": "simspot-customer-discovery",
+  "version": "0.1.0",
+  "name": "SimSpot Customer Discovery",
+  "task": "Handle an inbound customer-discovery conversation in SimSpot. Search for an existing or duplicate contact before writing, ask the documented discovery topics rather than guessing, confirm the latest requirements, respect the customer's data-consent scope, update the correct contact, create one appropriate follow-up, and send an honest summary with open questions and next steps. Verify every write before claiming completion.",
+  "limits": {
+    "wall_clock_seconds": 120,
+    "tool_calls": 24
+  },
+  "capabilities": [
+    "inquiry.read",
+    "discovery.guide.read",
+    "contacts.search",
+    "customer.ask",
+    "contact.read",
+    "contact.update",
+    "followup.create",
+    "followup.read",
+    "customer.send"
+  ],
+  "completion": "Return a concise account of confirmed facts, unresolved questions, the contact selected after duplicate checking, consent handling, verified SimSpot changes and the follow-up created. Do not claim a decision-maker, budget, consent or stable requirement that the customer did not confirm."
+}

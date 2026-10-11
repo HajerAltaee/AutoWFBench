@@ -1,0 +1,105 @@
+{
+  "version": "0.1.0",
+  "implementation": "simspot",
+  "isolation": "fresh-process-per-run",
+  "integration": {
+    "customer_runtime": "Sapiens4 Scheduled Routines",
+    "contract": "A customer Sapi owns a persisted routine_create(minutes,prompt) schedule. Each occurrence follows the case prompt and answers only the discovery topics asked. AutoWFBench remains the owner of SimSpot state and verification.",
+    "windows": "Sapiens4 and AutoWFBench run as native Python/PowerShell processes on loopback; no Linux or WSL paths are required."
+  },
+  "fixtures": {
+    "cases": [
+    {
+      "id": "interested-founder-unclear-budget",
+      "title": "Interested founder with an unclear budget",
+      "starting_contacts": [
+        {"contact_id": "CONTACT-1001", "email": "maya@orbitops.example", "company_id": "COMPANY-101", "name": "Maya Rahman", "lifecycle_stage": "Lead", "discovery_status": "New"}
+      ],
+      "inquiry": {"incoming_contact_id": "CONTACT-1001", "email": "maya@orbitops.example", "company_id": "COMPANY-101", "body": "I run OrbitOps and want to reduce manual onboarding work. Can we explore this?"},
+      "information_revealed": {"role": "Founder", "decision_authority": true, "goals": ["reduce onboarding time"], "pain_points": ["manual handoffs", "missed follow-ups"], "stakeholders": ["Founder", "Head of Operations"], "budget_status": "unclear", "budget_aed": null, "timeline_weeks": 12, "needs": ["workflow automation", "CRM synchronization"], "constraints": ["small implementation team"], "current_customer": false, "consent": "full", "requirements_revision": 1},
+      "information_after_confirmation": {"role": "Founder", "decision_authority": true, "goals": ["reduce onboarding time"], "pain_points": ["manual handoffs", "missed follow-ups"], "stakeholders": ["Founder", "Head of Operations"], "budget_status": "unclear", "budget_aed": null, "timeline_weeks": 12, "needs": ["workflow automation", "CRM synchronization"], "constraints": ["small implementation team"], "current_customer": false, "consent": "full", "requirements_revision": 1},
+      "questions": ["What outcome would make this worthwhile?", "Who besides you will evaluate the solution?", "Is there an approved budget or useful range?", "What timeline and constraints should we plan around?", "May we store a discovery summary in SimSpot?", "Are these still the current requirements?"],
+      "required_topics": ["role_authority", "goals", "pain_points", "stakeholders", "budget", "timeline", "constraints", "data_consent", "current_customer"],
+      "allowed_fields": ["lifecycle_stage", "discovery_status", "role", "decision_authority", "budget_status", "budget_aed", "timeline_weeks", "needs", "stakeholders", "privacy_scope", "discovery_summary", "requirements_revision"],
+      "expected_target": "CONTACT-1001",
+      "expected_changes": {"lifecycle_stage": "Lead", "discovery_status": "DiscoveryIncomplete", "role": "Founder", "decision_authority": true, "budget_status": "unclear", "budget_aed": null, "timeline_weeks": 12, "needs": ["workflow automation", "CRM synchronization"], "stakeholders": ["Founder", "Head of Operations"], "privacy_scope": "full", "discovery_summary": "Founder wants to reduce onboarding time; budget remains unclear.", "requirements_revision": 1},
+      "expected_followup": "clarify_budget",
+      "completion_criteria": ["Budget is recorded as unclear, not guessed", "Founder authority and other stakeholder are recorded", "A clarify-budget follow-up is verified"] ,
+      "sapiens_routine": {"minutes": 1440, "prompt": "Act as Maya Rahman, founder of OrbitOps, for the interested-founder-unclear-budget discovery case. Reveal only the documented facts for topics explicitly asked, keep budget unclear, and repeat the same answers on every occurrence."}
+    },
+    {
+      "id": "enterprise-non-decision-maker",
+      "title": "Enterprise contact who is not the decision-maker",
+      "starting_contacts": [
+        {"contact_id": "CONTACT-2001", "email": "liam@northstar.example", "company_id": "COMPANY-202", "name": "Liam Chen", "lifecycle_stage": "Lead", "discovery_status": "New"}
+      ],
+      "inquiry": {"incoming_contact_id": "CONTACT-2001", "email": "liam@northstar.example", "company_id": "COMPANY-202", "body": "Our service team needs a global case-routing platform."},
+      "information_revealed": {"role": "Service Operations Analyst", "decision_authority": false, "goals": ["standardize global case routing"], "pain_points": ["regional routing inconsistency"], "stakeholders": ["VP Customer Service", "Security", "Procurement"], "budget_status": "approved", "budget_aed": 450000, "timeline_weeks": 20, "needs": ["regional routing", "approval controls"], "constraints": ["security review", "procurement approval"], "current_customer": false, "consent": "full", "requirements_revision": 1},
+      "information_after_confirmation": {"role": "Service Operations Analyst", "decision_authority": false, "goals": ["standardize global case routing"], "pain_points": ["regional routing inconsistency"], "stakeholders": ["VP Customer Service", "Security", "Procurement"], "budget_status": "approved", "budget_aed": 450000, "timeline_weeks": 20, "needs": ["regional routing", "approval controls"], "constraints": ["security review", "procurement approval"], "current_customer": false, "consent": "full", "requirements_revision": 1},
+      "questions": ["What is your role in the buying process?", "Who owns the final decision?", "Which security and procurement stakeholders must participate?", "What budget and timeline have been approved?", "May we store a discovery summary?", "Are these still the current requirements?"],
+      "required_topics": ["role_authority", "goals", "pain_points", "stakeholders", "budget", "timeline", "constraints", "data_consent", "current_customer"],
+      "allowed_fields": ["lifecycle_stage", "discovery_status", "role", "decision_authority", "budget_status", "budget_aed", "timeline_weeks", "needs", "stakeholders", "privacy_scope", "discovery_summary", "requirements_revision"],
+      "expected_target": "CONTACT-2001",
+      "expected_changes": {"lifecycle_stage": "Opportunity", "discovery_status": "StakeholderNeeded", "role": "Service Operations Analyst", "decision_authority": false, "budget_status": "approved", "budget_aed": 450000, "timeline_weeks": 20, "needs": ["regional routing", "approval controls"], "stakeholders": ["VP Customer Service", "Security", "Procurement"], "privacy_scope": "full", "discovery_summary": "Enterprise champion identified; VP Customer Service is the decision-maker and security/procurement must join.", "requirements_revision": 1},
+      "expected_followup": "stakeholder_intro",
+      "completion_criteria": ["The contact is not mislabeled as decision-maker", "Decision and review stakeholders are recorded", "A stakeholder-introduction follow-up is verified"],
+      "sapiens_routine": {"minutes": 1440, "prompt": "Act as Liam Chen for the enterprise-non-decision-maker discovery case. Reveal only the documented facts for topics explicitly asked and consistently state that the VP Customer Service makes the decision."}
+    },
+    {
+      "id": "existing-duplicate-customer",
+      "title": "Existing or duplicate customer",
+      "starting_contacts": [
+        {"contact_id": "CONTACT-3000", "email": "aisha@harbor.example", "company_id": "COMPANY-303", "name": "Aisha Noor", "lifecycle_stage": "Customer", "discovery_status": "ActiveCustomer"},
+        {"contact_id": "CONTACT-3001", "email": "a.noor@harbor.example", "company_id": "COMPANY-303", "name": "Aisha Noor", "lifecycle_stage": "Lead", "discovery_status": "New"}
+      ],
+      "inquiry": {"incoming_contact_id": "CONTACT-3001", "email": "a.noor@harbor.example", "company_id": "COMPANY-303", "body": "We already use your platform and want to add our field-service team."},
+      "information_revealed": {"role": "Customer Experience Director", "decision_authority": true, "goals": ["expand automation to field service"], "pain_points": ["separate field-service queue"], "stakeholders": ["Customer Experience Director", "Field Service Lead"], "budget_status": "approved", "budget_aed": 220000, "timeline_weeks": 10, "needs": ["field-service workflows", "existing account integration"], "constraints": ["preserve current configuration"], "current_customer": true, "consent": "full", "requirements_revision": 1},
+      "information_after_confirmation": {"role": "Customer Experience Director", "decision_authority": true, "goals": ["expand automation to field service"], "pain_points": ["separate field-service queue"], "stakeholders": ["Customer Experience Director", "Field Service Lead"], "budget_status": "approved", "budget_aed": 220000, "timeline_weeks": 10, "needs": ["field-service workflows", "existing account integration"], "constraints": ["preserve current configuration"], "current_customer": true, "consent": "full", "requirements_revision": 1},
+      "questions": ["Are you already a customer under another email?", "Which existing account and configuration must be preserved?", "Who owns the expansion decision?", "What budget and timing apply?", "May we store the discovery summary?", "Are these still the current requirements?"],
+      "required_topics": ["role_authority", "goals", "pain_points", "stakeholders", "budget", "timeline", "constraints", "data_consent", "current_customer"],
+      "allowed_fields": ["lifecycle_stage", "discovery_status", "role", "decision_authority", "budget_status", "budget_aed", "timeline_weeks", "needs", "stakeholders", "privacy_scope", "discovery_summary", "requirements_revision"],
+      "expected_target": "CONTACT-3000",
+      "expected_changes": {"lifecycle_stage": "Customer", "discovery_status": "ExistingCustomerExpansion", "role": "Customer Experience Director", "decision_authority": true, "budget_status": "approved", "budget_aed": 220000, "timeline_weeks": 10, "needs": ["field-service workflows", "existing account integration"], "stakeholders": ["Customer Experience Director", "Field Service Lead"], "privacy_scope": "full", "discovery_summary": "Existing Harbor customer requests a field-service expansion; preserve the current configuration.", "requirements_revision": 1},
+      "expected_followup": "account_review",
+      "completion_criteria": ["The canonical customer record is selected after search", "The incoming duplicate remains unchanged", "An account-review follow-up is verified"],
+      "sapiens_routine": {"minutes": 1440, "prompt": "Act as Aisha Noor for the existing-duplicate-customer discovery case. Reveal only the documented facts for topics explicitly asked and consistently disclose the existing Harbor customer account."}
+    },
+    {
+      "id": "privacy-conscious-customer",
+      "title": "Privacy-conscious customer",
+      "starting_contacts": [
+        {"contact_id": "CONTACT-4001", "email": "elena@medaxis.example", "company_id": "COMPANY-404", "name": "Elena Rossi", "lifecycle_stage": "Lead", "discovery_status": "New"}
+      ],
+      "inquiry": {"incoming_contact_id": "CONTACT-4001", "email": "elena@medaxis.example", "company_id": "COMPANY-404", "body": "We need a support workflow, but please minimize stored personal data."},
+      "information_revealed": {"role": "Privacy Program Manager", "decision_authority": false, "goals": ["triage support requests with minimal personal data"], "pain_points": ["unnecessary transcript retention"], "stakeholders": ["Privacy Program Manager", "Data Protection Officer"], "budget_status": "unknown", "budget_aed": null, "timeline_weeks": null, "needs": ["data minimization", "retention controls"], "constraints": ["no raw discovery transcript", "no personal phone number"], "current_customer": false, "consent": "summary_only", "requirements_revision": 1},
+      "information_after_confirmation": {"role": "Privacy Program Manager", "decision_authority": false, "goals": ["triage support requests with minimal personal data"], "pain_points": ["unnecessary transcript retention"], "stakeholders": ["Privacy Program Manager", "Data Protection Officer"], "budget_status": "unknown", "budget_aed": null, "timeline_weeks": null, "needs": ["data minimization", "retention controls"], "constraints": ["no raw discovery transcript", "no personal phone number"], "current_customer": false, "consent": "summary_only", "requirements_revision": 1},
+      "questions": ["Which business facts may we store?", "Which personal data or transcript details must we avoid?", "Who can approve the project?", "Are budget and timing known?", "May we retain only structured summary fields?", "Are these still the current requirements?"],
+      "required_topics": ["role_authority", "goals", "pain_points", "stakeholders", "budget", "timeline", "constraints", "data_consent", "current_customer"],
+      "allowed_fields": ["lifecycle_stage", "discovery_status", "role", "decision_authority", "budget_status", "budget_aed", "timeline_weeks", "needs", "stakeholders", "privacy_scope", "requirements_revision"],
+      "expected_target": "CONTACT-4001",
+      "expected_changes": {"lifecycle_stage": "Lead", "discovery_status": "PrivacyReview", "role": "Privacy Program Manager", "decision_authority": false, "budget_status": "unknown", "budget_aed": null, "timeline_weeks": null, "needs": ["data minimization", "retention controls"], "stakeholders": ["Privacy Program Manager", "Data Protection Officer"], "privacy_scope": "summary_only", "requirements_revision": 1},
+      "expected_followup": "privacy_review",
+      "completion_criteria": ["Consent is explicitly asked and stored as summary-only", "No raw transcript or personal phone is stored", "A privacy-review follow-up is verified"],
+      "sapiens_routine": {"minutes": 1440, "prompt": "Act as Elena Rossi for the privacy-conscious-customer discovery case. Reveal only the documented facts for topics explicitly asked, permit structured summary fields only, and refuse raw transcript or phone retention."}
+    },
+    {
+      "id": "high-value-changing-requirements",
+      "title": "High-value customer whose requirements change",
+      "starting_contacts": [
+        {"contact_id": "CONTACT-5001", "email": "omar@quantum.example", "company_id": "COMPANY-505", "name": "Omar Haddad", "lifecycle_stage": "Lead", "discovery_status": "New"}
+      ],
+      "inquiry": {"incoming_contact_id": "CONTACT-5001", "email": "omar@quantum.example", "company_id": "COMPANY-505", "body": "We are evaluating a strategic global automation rollout."},
+      "information_revealed": {"role": "Chief Digital Officer", "decision_authority": true, "goals": ["global support transformation"], "pain_points": ["fragmented regional tooling"], "stakeholders": ["Chief Digital Officer", "CISO", "Regional Operations"], "budget_status": "approved", "budget_aed": 1200000, "timeline_weeks": 16, "needs": ["analytics dashboards"], "constraints": ["global rollout"], "current_customer": false, "consent": "full", "requirements_revision": 1},
+      "information_after_confirmation": {"role": "Chief Digital Officer", "decision_authority": true, "goals": ["global support transformation"], "pain_points": ["fragmented regional tooling"], "stakeholders": ["Chief Digital Officer", "CISO", "Regional Operations"], "budget_status": "approved", "budget_aed": 1200000, "timeline_weeks": 16, "needs": ["regional data residency", "SAML SSO", "audit exports"], "constraints": ["global rollout", "CISO approval"], "current_customer": false, "consent": "full", "requirements_revision": 2},
+      "questions": ["What business outcome and rollout scope matter most?", "Who must approve security and regional deployment?", "What budget and deadline are committed?", "What technical constraints apply?", "May we store a discovery summary?", "Before we update SimSpot, are these still the current requirements?"],
+      "required_topics": ["role_authority", "goals", "pain_points", "stakeholders", "budget", "timeline", "constraints", "data_consent", "current_customer"],
+      "allowed_fields": ["lifecycle_stage", "discovery_status", "role", "decision_authority", "budget_status", "budget_aed", "timeline_weeks", "needs", "stakeholders", "privacy_scope", "discovery_summary", "requirements_revision"],
+      "expected_target": "CONTACT-5001",
+      "expected_changes": {"lifecycle_stage": "Opportunity", "discovery_status": "DiscoveryComplete", "role": "Chief Digital Officer", "decision_authority": true, "budget_status": "approved", "budget_aed": 1200000, "timeline_weeks": 16, "needs": ["regional data residency", "SAML SSO", "audit exports"], "stakeholders": ["Chief Digital Officer", "CISO", "Regional Operations"], "privacy_scope": "full", "discovery_summary": "High-value global rollout now requires regional data residency, SAML SSO and audit exports, subject to CISO approval.", "requirements_revision": 2},
+      "expected_followup": "solution_workshop",
+      "completion_criteria": ["A separate confirmation round captures revision 2", "Revision 1 analytics requirements are not stored as current", "A solution-workshop follow-up is verified"],
+      "sapiens_routine": {"minutes": 1440, "prompt": "Act as Omar Haddad for the high-value-changing-requirements discovery case. Initially reveal analytics dashboards; when requirements_confirmation is asked, replace that with regional data residency, SAML SSO and audit exports and identify it as revision 2."}
+    }
+    ]
+  }
+}

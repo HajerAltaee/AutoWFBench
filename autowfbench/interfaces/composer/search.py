@@ -63,7 +63,7 @@ def public_input(challenge_id):
     process = EnvironmentProcess(challenge_id, 0)
     try:
         apps = http_json(process.public_url + "/apps", token=process.run_token)
-        preview = [{"operation":op["operation"], "result":http_json(process.public_url+op["path"], {}, process.run_token)} for op in apps["operations"] if op["operation"].endswith(".read")]
+        preview = [{"operation":op["operation"], "result":http_json(process.public_url+op["path"], {}, process.run_token)} for op in apps["operations"] if op["operation"].endswith(".read") and not op["arguments"].get("required")]
     finally:
         process.close()
     return {"challenge": load_challenge(challenge_id)["definition"], "apps": apps, "development_preview":preview, "submission_schema": read_json(ROOT / "benchmark/schemas/submission.schema.json")}

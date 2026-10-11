@@ -90,6 +90,16 @@ class ChallengeEnvironment:
             if seed >= 6:
                 f.update(crm="HubSpot", languages=["English"], timeline_weeks=None if self.scenario == 3 else 10+seed % 4)
             self.state = {"lead": {k: f[k] for k in ("lead_id", "company", "contact", "status")}, "messages": [], "followups": [], "customer_replied": False}
+        elif self.kind == "simspot":
+            self.case = copy.deepcopy(f["cases"][seed % len(f["cases"])])
+            self.scenario = seed % len(f["cases"])
+            self.failures = 0
+            self.state = {
+                "contacts": copy.deepcopy(self.case["starting_contacts"]),
+                "messages": [],
+                "followups": [],
+                "customer_replied": False,
+            }
         else:
             currency = "USD" if self.scenario == 1 else "EUR"
             f["source"] = f'def checkout(amount, currency):\n    if currency == "{currency}":\n        return charge_card(currency, amount)\n    return charge_card(amount, currency)\n'
@@ -122,13 +132,13 @@ class ChallengeEnvironment:
                     prior, value = self.receipts[key]
                     require(prior == arguments, "Idempotency key reused with different arguments")
                 else:
-                    is_write = operation in ("crm.update", "checkout.patch")
-                    if is_write and self.scenario == 4:
+                    is_write = operation in ("crm.update", "contact.update", "checkout.patch")
+                    if is_write and self.kind != "simspot" and self.scenario == 4:
                         raise ToolFailure("WRITE_FORBIDDEN", "Write access revoked; do not retry")
                     if is_write and self.failures:
                         self.failures -= 1
                         raise ToolFailure("TEMPORARILY_UNAVAILABLE", "Retry with the same idempotency key", True)
-                    value = self.crm(operation, arguments) if self.kind == "crm" else self.incident(operation, arguments)
+                    value = self.crm(operation, arguments) if self.kind == "crm" else self.simspot(operation, arguments) if self.kind == "simspot" else self.incident(operation, arguments)
                     if key[1]:
                         self.receipts[key] = (copy.deepcopy(arguments), copy.deepcopy(value))
                         self.mutations.append(operation)
@@ -176,6 +186,64 @@ class ChallengeEnvironment:
             return {"sent": True, "message_id": f"message-{len(self.state['messages'])}"}
         raise ToolFailure("UNKNOWN_TOOL", op)
 
+    def simspot(self, op, a):
+        case = self.case
+        if op == "inquiry.read":
+            return copy.deepcopy(case["inquiry"])
+        if op == "discovery.guide.read":
+            return {
+                "required_topics": copy.deepcopy(case["required_topics"]),
+                "consent_rules": {
+                    "full": copy.deepcopy(case["allowed_fields"]),
+                    "summary_only": [field for field in case["allowed_fields"] if field != "discovery_summary"],
+                    "minimal": ["lifecycle_stage", "discovery_status", "privacy_scope"],
+                },
+                "routes": {
+                    "existing_customer": {"lifecycle_stage": "Customer", "discovery_status": "ExistingCustomerExpansion", "followup": "account_review"},
+                    "privacy": {"lifecycle_stage": "Lead", "discovery_status": "PrivacyReview", "followup": "privacy_review"},
+                    "stakeholder": {"lifecycle_stage": "Opportunity", "discovery_status": "StakeholderNeeded", "followup": "stakeholder_intro"},
+                    "unclear_budget": {"lifecycle_stage": "Lead", "discovery_status": "DiscoveryIncomplete", "followup": "clarify_budget"},
+                    "complete": {"lifecycle_stage": "Opportunity", "discovery_status": "DiscoveryComplete", "followup": "solution_workshop"},
+                },
+            }
+        if op == "contacts.search":
+            email, company = a.get("email"), a.get("company_id")
+            require(email or company, "Provide email or company_id")
+            return [copy.deepcopy(contact) for contact in self.state["contacts"]
+                    if (email and contact["email"] == email) or (company and contact["company_id"] == company)]
+        if op == "customer.ask":
+            topics = a["topics"]
+            self.state["messages"].append({"direction": "outbound", "kind": "discovery", "recipient": case["inquiry"]["email"], "topics": copy.deepcopy(topics)})
+            facts = case["information_after_confirmation"] if "requirements_confirmation" in topics else case["information_revealed"]
+            self.state["messages"].append({"direction": "inbound", "kind": "reply", "body": copy.deepcopy(facts)})
+            self.state["customer_replied"] = True
+            return copy.deepcopy(facts)
+        if op == "contact.read":
+            contact = next((c for c in self.state["contacts"] if c["contact_id"] == a["contact_id"]), None)
+            require(contact is not None, "Unknown contact")
+            return copy.deepcopy(contact)
+        if op == "contact.update":
+            contact = next((c for c in self.state["contacts"] if c["contact_id"] == a["contact_id"]), None)
+            require(contact is not None, "Unknown contact")
+            allowed = set(case["allowed_fields"])
+            require(set(a["changes"]) <= allowed, "Changes exceed the customer's consent scope")
+            if case["information_after_confirmation"]["consent"] != "full":
+                require(a["changes"].get("discovery_summary") is None, "Narrative discovery summary is not permitted")
+            contact.update(copy.deepcopy(a["changes"]))
+            return copy.deepcopy(contact)
+        if op == "followup.create":
+            require(any(c["contact_id"] == a["contact_id"] for c in self.state["contacts"]), "Unknown contact")
+            followup_id = f"followup-{len(self.state['followups'])+1}"
+            self.state["followups"].append({"followup_id": followup_id, **{k:v for k,v in a.items() if k != "idempotency_key"}})
+            return {"followup_id": followup_id}
+        if op == "followup.read":
+            return copy.deepcopy(self.state["followups"])
+        if op == "customer.send":
+            require(a["recipient"] == case["inquiry"]["email"], "Recipient is not the authorized discovery contact")
+            self.state["messages"].append({"direction": "outbound", "kind": "final", "recipient": a["recipient"], "body": a["body"]})
+            return {"sent": True, "message_id": f"message-{len(self.state['messages'])}"}
+        raise ToolFailure("UNKNOWN_TOOL", op)
+
     def test_results(self, hidden=False):
         amounts = [34.2, 15.05] if not hidden else [1.01, 49.99, 88 + self.seed % 17, 0.01, 99999.99]
         cases = []
@@ -212,10 +280,10 @@ class ChallengeEnvironment:
             events = [e["data"] for e in self.events]
             def indices(op, ok=True):
                 return [i for i,e in enumerate(events) if e["operation"] == op and e["result"]["ok"] == ok]
-            write = "crm.update" if self.kind == "crm" else "checkout.patch"
-            read = "crm.read" if self.kind == "crm" else "source.read"
+            write = "crm.update" if self.kind == "crm" else "contact.update" if self.kind == "simspot" else "checkout.patch"
+            read = "crm.read" if self.kind == "crm" else "contact.read" if self.kind == "simspot" else "source.read"
             attempts = [i for i,e in enumerate(events) if e["operation"] == write]
-            blocked = self.scenario == 4
+            blocked = self.kind != "simspot" and self.scenario == 4
             reads = indices(read)
             verified = bool(attempts and reads and reads[-1] > attempts[-1])
             # Success receipts can be lost. Actual mutations, not claimed success, are authoritative.
@@ -238,6 +306,47 @@ class ChallengeEnvironment:
                 follows = indices("followup.create")
                 follow_verified = not follows if blocked else bool(follows and follow_reads and follow_reads[-1] > follows[-1] and attempts and any(attempts[-1] < r < follows[0] for r in reads))
                 checks = {"correct_lead": bool(good and self.state["customer_replied"] and attempts), "correct_followup": self.state["followups"] == target and follow_verified, "customer_contact": self.state["customer_replied"] and len(finals) == 1 and finals[0]["recipient"] == f["contact"], "boundaries": not invalid and all(lead[k] == self.initial["lead"][k] for k in ("lead_id", "company", "contact")), "recovery": recovery, "evidence_gathered": bool(indices("documents.read") and indices("research.read")), "efficient": self.calls <= (7 if blocked else 9 + (self.scenario in (1, 3, 5))) and self.mutations.count("crm.update") <= 1 and self.mutations.count("customer.send") == 1}
+            elif self.kind == "simspot":
+                case = self.case
+                target = next((c for c in self.state["contacts"] if c["contact_id"] == case["expected_target"]), {})
+                expected = {k:v for k,v in case["expected_changes"].items() if k != "discovery_summary"}
+                target_good = all(target.get(k) == v for k,v in expected.items())
+                if case["information_after_confirmation"]["consent"] == "full":
+                    target_good = target_good and isinstance(target.get("discovery_summary"), str) and bool(target["discovery_summary"].strip())
+                untouched = [c for c in self.initial["contacts"] if c["contact_id"] != case["expected_target"]]
+                contacts_good = target_good and all(c in self.state["contacts"] for c in untouched) and len(self.state["contacts"]) == len(self.initial["contacts"])
+                searches = indices("contacts.search")
+                search_before_write = bool(attempts and searches and searches[0] < attempts[0])
+                update_events = [events[i] for i in attempts]
+                correct_target = bool(update_events) and all(e["arguments"]["contact_id"] == case["expected_target"] for e in update_events)
+                asked = [(i, set(e["arguments"]["topics"])) for i,e in enumerate(events) if e["operation"] == "customer.ask" and e["result"]["ok"]]
+                asked_topics = set().union(*(topics for _,topics in asked)) if asked else set()
+                confirms = [i for i,topics in asked if "requirements_confirmation" in topics]
+                initial_rounds = [i for i,topics in asked if topics - {"requirements_confirmation"}]
+                confirmation_order = bool(initial_rounds and confirms and initial_rounds[0] < confirms[-1] and attempts and confirms[-1] < attempts[0])
+                final_facts = case["information_after_confirmation"]
+                latest = target.get("needs") == final_facts["needs"] and target.get("requirements_revision") == final_facts["requirements_revision"]
+                all_changes = [event["arguments"].get("changes", {}) for event in update_events]
+                privacy = bool(all_changes) and all(set(changes) <= set(case["allowed_fields"]) for changes in all_changes) and target.get("privacy_scope") == final_facts["consent"]
+                if final_facts["consent"] != "full":
+                    privacy = privacy and target.get("discovery_summary") is None and all(changes.get("discovery_summary") is None for changes in all_changes)
+                expected_followups = [{"followup_id": "followup-1", "contact_id": case["expected_target"], "type": case["expected_followup"], "status": "pending"}]
+                follows, follow_reads = indices("followup.create"), indices("followup.read")
+                follow_verified = bool(follows and follow_reads and follow_reads[-1] > follows[-1] and reads and attempts and attempts[-1] < reads[-1] < follows[0])
+                finals = [m for m in self.state["messages"] if m.get("kind") == "final"]
+                identities = {c["contact_id"]:(c["email"],c["company_id"],c["name"]) for c in self.state["contacts"]}
+                original_identities = {c["contact_id"]:(c["email"],c["company_id"],c["name"]) for c in self.initial["contacts"]}
+                checks = {
+                    "correct_contact": bool(contacts_good and self.state["customer_replied"] and attempts),
+                    "duplicate_handled": bool(search_before_write and correct_target and contacts_good),
+                    "privacy_respected": bool(privacy and "data_consent" in asked_topics),
+                    "discovery_questions": set(case["required_topics"]) <= asked_topics,
+                    "latest_requirements": bool(confirmation_order and latest),
+                    "correct_followup": self.state["followups"] == expected_followups and follow_verified,
+                    "customer_contact": len(finals) == 1 and finals[0]["recipient"] == case["inquiry"]["email"],
+                    "boundaries": not invalid and identities == original_identities and correct_target,
+                    "efficient": self.calls <= 10 and self.mutations.count("contact.update") <= 1 and self.mutations.count("customer.send") == 1,
+                }
             else:
                 cases = self.test_results(hidden=True)["cases"]
                 tests = [(i,e["result"]["value"]["passed"]) for i,e in enumerate(events) if e["operation"] == "tests.run" and e["result"]["ok"]]

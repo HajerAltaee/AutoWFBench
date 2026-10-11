@@ -42,6 +42,35 @@ def solve(request, variant="reference", cancelled=None):
             body = f"Assessment: {route}. " + ("Recorded in CRM; the next step is " + changes["next_action"] if confirmed else "CRM write is blocked; staff must restore access before recording the assessment or creating a follow-up.") + ". Integration, scope, price and timing require assessment; no commitments are made."
             write("customer.send", recipient=inquiry["contact"], body=body)
         answer = f"Customer facts: {facts}. Policy and company evidence consulted. Assessment: {route}. CRM readback: {lead}. Update result: {update}. " + ("Follow-up verified; scheduling or clarification remains open." if confirmed and variant != "incomplete" else "Work is incomplete; no follow-up claimed.")
+    elif request["challenge"]["id"] == "simspot-customer-discovery":
+        inquiry = tool("inquiry.read")["value"]
+        guide = tool("discovery.guide.read")["value"]
+        contacts = tool("contacts.search", email=inquiry["email"], company_id=inquiry["company_id"])["value"]
+        tool("customer.ask", topics=guide["required_topics"])
+        facts = tool("customer.ask", topics=["requirements_confirmation"])["value"]
+        route = "existing_customer" if facts["current_customer"] else "privacy" if facts["consent"] != "full" else "stakeholder" if facts["decision_authority"] is not True else "unclear_budget" if facts["budget_status"] != "approved" else "complete"
+        policy = guide["routes"][route]
+        target = next((contact for contact in contacts if facts["current_customer"] and contact["lifecycle_stage"] == "Customer"), None)
+        target = target or next(contact for contact in contacts if contact["contact_id"] == inquiry["incoming_contact_id"])
+        changes = {
+            **{k:facts[k] for k in ("role", "decision_authority", "budget_status", "budget_aed", "timeline_weeks", "needs", "stakeholders", "requirements_revision")},
+            "privacy_scope": facts["consent"],
+            "lifecycle_stage": policy["lifecycle_stage"],
+            "discovery_status": policy["discovery_status"],
+        }
+        if facts["consent"] == "full":
+            changes["discovery_summary"] = f"Confirmed discovery revision {facts['requirements_revision']}: " + ", ".join(facts["needs"]) + "."
+        update = write("contact.update", contact_id=target["contact_id"], changes=changes)
+        contact = tool("contact.read", contact_id=target["contact_id"])["value"]
+        confirmed = all(contact.get(k) == v for k,v in changes.items())
+        if variant != "incomplete":
+            if confirmed:
+                write("followup.create", contact_id=target["contact_id"], type=policy["followup"], status="pending")
+                tool("followup.read")
+            open_items = "budget remains open" if facts["budget_status"] != "approved" else "stakeholder participation remains open" if facts["decision_authority"] is not True else "scope requires solution validation"
+            body = f"Thank you. We recorded the confirmed requirements under your {facts['consent']} consent scope; {open_items}. The next step is {policy['followup'].replace('_', ' ')}. No price, delivery or compliance commitment has been made."
+            write("customer.send", recipient=inquiry["email"], body=body)
+        answer = f"Searched SimSpot and selected {target['contact_id']}. Confirmed discovery facts: {facts}. Consent: {facts['consent']}. Contact readback: {contact}. Update result: {update}. " + (f"Verified one {policy['followup']} follow-up and sent the customer summary." if confirmed and variant != "incomplete" else "Work is incomplete; no follow-up claimed.")
     else:
         incident = tool("incident.read")["value"]
         source = tool("source.read")["value"]

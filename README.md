@@ -1,7 +1,8 @@
 # AutoWFBench v2
 
 Sol 6.1 composes native n8n workflows for two stateful simApps challenges:
-CRM qualification and checkout repair. One composer; no task-specific templates.
+CRM qualification, SimSpot customer discovery and checkout repair. One composer; no
+task-specific templates.
 
 Requires Python 3.11+, Node 22+, authenticated Codex and n8n **2.42.3**.
 
@@ -23,6 +24,7 @@ The same workflow is reused without edits across a challenge's cases.
 
 ```sh
 python -m autowfbench evaluate crm-lead-qualification path/to/workflow.json
+python -m autowfbench evaluate simspot-customer-discovery path/to/workflow.json
 python -m unittest discover -s development/tests -v
 python development/tools/verify_lock.py
 ```
