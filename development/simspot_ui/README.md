@@ -1,0 +1,109 @@
+# Experimental SimSpot UI
+
+A local browser reconstruction of a narrow HubSpot contact workflow, based on
+sanitized Blindly Windows UIA captures from a test account. It is **not scored
+integration, a HubSpot API implementation, or proven same-action parity**.
+The existing benchmark SimSpot API remains independent and unchanged.
+
+From the repository root:
+
+```powershell
+python -m development.simspot_ui.server --port 8765
+```
+
+Open `http://127.0.0.1:8765/`. No external services or dependencies are required
+for this native mode.
+The default SQLite store is `%LOCALAPPDATA%/AutoWFBench/simspot-ui.sqlite3` on
+Windows, or `~/.local/share/AutoWFBench/simspot-ui.sqlite3` elsewhere. Supply
+`--store C:/path/to/demo.sqlite3` for a separate persistent workspace. A new path
+seeds six fictional contacts; restarting with the same path preserves edits and
+activities. Do not place real customer data in this experimental workspace.
+
+## Implemented workflow
+
+1. Use `Create Contact` on Contacts to add a fictional lead with email, first name,
+   and last name. New leads start without a company and with lifecycle stage Lead.
+2. Open the new lead, edit job title or other identity fields, add a discovery note
+   and follow-up task, then refresh or restart and verify the saved information.
+   An email already used by another contact is rejected, ignoring case.
+3. Search Contacts by name, email, or company. `Aisha` returns two distinct records.
+4. Open the Customer record, identified by `simspot.aisha.harbor@example.com`.
+5. Use `Edit` to change First Name, Last Name, Job Title, or Email. Save and read back.
+6. Use `Create a note` (visible `Note`) and save through `Create note`. Expand
+   `Associated with 2 records` and uncheck the company for a contact-only note.
+   Saved activity readback reports the actual association count and names.
+7. Use `Create a task` (visible `Task`), enter a title/date/description, and `Create`.
+   Tasks also support deselecting the company association. The initial time is
+   08:00, matching the observed test-account task form.
+8. Inspect Activities, refresh, or restart the process and read back saved values.
+   The other Aisha record remains separate and unchanged.
+
+`replay-example.json` records one deterministic local edit/note/task sequence.
+It is a test fixture, not a claim that the sequence has been replayed in HubSpot.
+
+## Evidence and intentional limits
+
+Observed labels include `Create Contact`, `Email`, `First name`, `Last name`,
+`Search ( / )`, `Edit`, `First Name`, `Last Name`,
+`Job Title`, `Email`, `Create a note`, `Create a Note`, `Create note`,
+`Create a task`, `Enter your task`, `Activity date`, `HH:MM`, `Task Type`,
+`Priority`, `Activity assigned to`, `Task Description`, and `Create`.
+Names, dates, layout, and values in this implementation use fictional local data.
+
+The identity editor's Save interaction, complete dropdown choices, lifecycle editor,
+task defaults, and activity presentation are reconstruction choices; the captures do
+not establish complete fidelity. Notes use plain text; formatting, reminders,
+recurrence, email sending, meetings, import, arbitrary association editing, and deal
+creation are not implemented. Companies are a read-only fixture list. The local
+three-business-day task default excludes weekends but not holidays.
+
+Five intended company associations are seeded (OrbitOps, Northstar, Harbor,
+MedAxis, Quantum). The captured real import instead autoassociated a contact with
+example.com; real company setup was still in progress. Local associations therefore
+must not be presented as verified real-account equivalence. Email validation is
+deliberately narrow, includes the observed `.example` failure, and does not claim to
+reproduce HubSpot's complete validation algorithm.
+
+Native mode binds only to 127.0.0.1. Docker mode binds inside its container to
+0.0.0.0 but publishes the port only to Windows loopback. Both reject non-loopback
+Host headers, require
+same-origin Origin and JSON on writes, limits body size, and emits no CORS headers.
+There is no authentication: this is for a trusted local fictional-data session.
+Content Security Policy blocks external resources and inline scripts; stored text
+is rendered as text nodes rather than HTML. SQLite transactions persist writes.
+
+## Verification and future adapter
+
+### Docker on Windows
+
+With Docker Desktop's Linux engine running, first stop any native server using
+port 8765, then from this directory run:
+
+```powershell
+docker compose up --build -d
+```
+
+Visit `http://127.0.0.1:8765/` and follow the new-lead workflow above.
+`docker compose down` stops the container; the named volume preserves test data.
+The Compose service is an experimental UI server only. It is **not** yet a
+benchmark relay: its browser-write policy deliberately rejects arbitrary Docker
+peers, and there is no benchmark/Sapiens mapping or token-authenticated service
+interface here. Do not expose the port beyond the local machine or use real data.
+The container smoke run remains unverified until Docker's Linux engine is available.
+
+```powershell
+python -m unittest development.tests.test_simspot_ui -v
+```
+
+Focused tests cover persistence, search, duplicate preservation, invalid inputs,
+HTTP request boundaries, and inert rendering contracts. They do not replace a
+browser replay or prove visual parity. No scored benchmark run is required.
+
+`contracts.py` owns validation, `state.py` owns storage and fixtures, and
+`server.py` owns HTTP transport; browser assets are under `static/`.
+The next narrow integration step is an explicit adapter mapping selected contact
+IDs, structured property writes, note bodies, and task outcomes into the benchmark's
+run-scoped state and evidence events. It must define consent behavior, activity
+associations, UI-versus-business call accounting, and readback verification before
+being connected to scoring. The current synthetic customer response implementation
+does not gate returned facts by requested topic; this UI makes no such claim.

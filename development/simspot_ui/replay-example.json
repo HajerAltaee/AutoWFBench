@@ -1,0 +1,16 @@
+{
+  "scope": "Local fictional reconstruction only; real HubSpot replay not verified",
+  "search": "Aisha",
+  "contact_id": "CONTACT-3000",
+  "unchanged_contact_id": "CONTACT-3001",
+  "identity": {"job_title": "Customer Experience Director"},
+  "note": {"body": "Discovery: Harbor requests a field-service expansion. Preserve the current configuration. Next step: account review."},
+  "task": {
+    "title": "Account review — Harbor field-service expansion",
+    "body": "Review expansion needs with the Customer Experience Director and Field Service Lead.",
+    "due_date": "2026-10-15",
+    "due_time": "08:00",
+    "task_type": "To-do",
+    "priority": "None"
+  }
+}
