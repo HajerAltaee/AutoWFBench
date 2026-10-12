@@ -180,7 +180,9 @@ class SimSpotUIHTTPTests(unittest.TestCase):
                                   ({**good, "Content-Type": "text/plain"}, 415),
                                   ({**good, "Host": "attacker.invalid"}, 403)]:
             with self.subTest(headers=headers):
-                status, response_headers, _ = self.request("POST", "/api/contacts/CONTACT-3000/notes", {"body": "Blocked"}, headers)
+                # These guards reject headers before reading a body. Sending
+                # unused body bytes can reset the closing socket on Windows.
+                status, response_headers, _ = self.request("POST", "/api/contacts/CONTACT-3000/notes", headers=headers, raw="")
                 self.assertEqual(status, expected)
                 self.assertNotIn("Access-Control-Allow-Origin", response_headers)
         self.assertEqual(self.store.activities("CONTACT-3000"), [])

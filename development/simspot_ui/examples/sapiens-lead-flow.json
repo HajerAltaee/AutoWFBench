@@ -1,0 +1,292 @@
+{
+  "name": "SimSpot UI Lead Creation and Verified Update",
+  "nodes": [
+    {
+      "id": "0dff7555-77b1-4371-95a1-6c76c75378c1",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "15044ddb-5a5a-4fd6-98ef-f82f5ed58f48",
+      "name": "Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{}",
+        "options": {}
+      }
+    },
+    {
+      "id": "8cac7434-a98b-4e2e-95f5-fd9fc2025d38",
+      "name": "Create Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $('Context').first().json.lead.email, first_name: $('Context').first().json.lead.first_name, last_name: $('Context').first().json.lead.last_name }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "2430d901-534d-441f-a2c3-9e1088f65060",
+      "name": "Capture Created ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const record = $input.first().json;\nif (!record || typeof record !== 'object' ||\n    typeof record.contact_id !== 'string' || record.contact_id.trim() === '') {\n  throw new Error('Create response did not include a contact_id');\n}\nreturn [{ json: { contact_id: record.contact_id } }];"
+      }
+    },
+    {
+      "id": "c00e74fb-4ef1-4775-90fd-aea54737cef6",
+      "name": "Read Created Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts/' + encodeURIComponent($('Capture Created ID').first().json.contact_id) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "e1b02568-fee6-4ab8-a601-1ea3b794bf6b",
+      "name": "Verify Created Contact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const record = $input.first().json;\nconst expected = $('Context').first().json.lead;\nconst contactId = $('Capture Created ID').first().json.contact_id;\nif (!record || typeof record !== 'object' ||\n    record.contact_id !== contactId ||\n    record.email !== expected.email.trim() ||\n    record.first_name !== expected.first_name.trim() ||\n    record.last_name !== expected.last_name.trim()) {\n  throw new Error('Created contact read-back did not match the supplied lead');\n}\nreturn [{ json: {\n  contact_id: record.contact_id,\n  email: record.email,\n  first_name: record.first_name,\n  last_name: record.last_name\n} }];"
+      }
+    },
+    {
+      "id": "880c163a-3ce7-433a-9369-8110c7342a5f",
+      "name": "Update Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        300
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts/' + encodeURIComponent($('Verify Created Contact').first().json.contact_id) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ job_title: $('Context').first().json.updates.job_title, lifecycle_stage: $('Context').first().json.updates.lifecycle_stage }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "44860586-54be-4e3b-8541-c0276e4d598e",
+      "name": "Read Updated Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts/' + encodeURIComponent($('Verify Created Contact').first().json.contact_id) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5cf6b276-4c73-421c-aeb1-d34107362123",
+      "name": "Submit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const record = $input.first().json;\nconst context = $('Context').first().json;\nconst created = $('Verify Created Contact').first().json;\nif (!record || typeof record !== 'object' ||\n    record.contact_id !== created.contact_id ||\n    record.email !== created.email ||\n    record.first_name !== created.first_name ||\n    record.last_name !== created.last_name ||\n    record.job_title !== context.updates.job_title.trim() ||\n    record.lifecycle_stage !== context.updates.lifecycle_stage.trim()) {\n  throw new Error('Updated contact read-back did not match the requested changes');\n}\nconst updated = {\n  contact_id: record.contact_id,\n  email: record.email,\n  first_name: record.first_name,\n  last_name: record.last_name,\n  job_title: record.job_title,\n  lifecycle_stage: record.lifecycle_stage\n};\nconst timestamp = new Date().toISOString();\nreturn [{ json: {\n  protocol_version: '1.0',\n  run_id: context.run_id,\n  status: 'completed',\n  final_answer: 'Created the lead and verified the contact; updated its job title and lifecycle stage and verified the read-back.',\n  artifacts: [{\n    name: 'verified-contact.json',\n    media_type: 'application/json',\n    content: JSON.stringify({ created, updated })\n  }],\n  trace: [\n    { timestamp, kind: 'contact_created', data: { contact_id: created.contact_id } },\n    { timestamp, kind: 'created_contact_verified', data: created },\n    { timestamp, kind: 'updated_contact_verified', data: updated }\n  ]\n} }];"
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Capture Created ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Created ID": {
+      "main": [
+        [
+          {
+            "node": "Read Created Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Created Contact": {
+      "main": [
+        [
+          {
+            "node": "Verify Created Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Created Contact": {
+      "main": [
+        [
+          {
+            "node": "Update Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact": {
+      "main": [
+        [
+          {
+            "node": "Read Updated Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Updated Contact": {
+      "main": [
+        [
+          {
+            "node": "Submit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

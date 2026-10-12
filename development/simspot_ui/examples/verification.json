@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-12",
+  "host_platform": "Windows",
+  "generation": {
+    "entrypoint": "Sapiens4 CLI chat to chief",
+    "chief_id": "sapi_68886c03b567",
+    "specialist_name": "N8nComposer",
+    "specialist_id": "sapi_faebfd16556c",
+    "authoring_task_id": "13818e26f4f24fcd9cbd269c6ac0ad05",
+    "correction_task_id": "4f3c7824bbf64a2aa79b9c7cdc435cec",
+    "correction_task_state": "Completed",
+    "review_correction": "Use the server's direct contact object and contact_id field; remove guessed aliases."
+  },
+  "execution": {
+    "run_id": "sapiens-ui-c788790e7afb",
+    "workflow_sha256": "99034985974bcdb133200ba11d0bd241e652f0e330152c9aa28cb130dc04214b",
+    "runtime": "n8n 2.42.3 in Docker",
+    "network": "Dedicated internal Docker network, no published host port",
+    "workflow_reported_completed": true,
+    "one_new_lead": true,
+    "requested_values_saved": true,
+    "existing_contacts_unchanged": true,
+    "contacts_before": 6,
+    "contacts_after": 7,
+    "verified_changes": {"job_title": "Founder", "lifecycle_stage": "Opportunity"},
+    "scored": false
+  },
+  "limits": [
+    "Standalone development workflow, not a production Composer provider replacement or scored UI integration.",
+    "The first transport attempt could not reach the published Windows port and stopped before CRM writes; the successful run used internal Docker communication.",
+    "This proof covers one fictional lead flow, not live Sapiens customer Routines or complete HubSpot parity."
+  ]
+}

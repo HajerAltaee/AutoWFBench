@@ -85,11 +85,14 @@ docker compose up --build -d
 
 Visit `http://127.0.0.1:8765/` and follow the new-lead workflow above.
 `docker compose down` stops the container; the named volume preserves test data.
-The Compose service is an experimental UI server only. It is **not** yet a
-benchmark relay: its browser-write policy deliberately rejects arbitrary Docker
-peers, and there is no benchmark/Sapiens mapping or token-authenticated service
-interface here. Do not expose the port beyond the local machine or use real data.
-The container smoke run remains unverified until Docker's Linux engine is available.
+The Compose service is an experimental UI server. It has no benchmark state
+mapping or token-authenticated service interface. Host and Origin checks are
+browser request guards, not authentication. Keep this fictional-data service
+local. A Sapiens-authored workflow has now completed a create/read/update/read
+flow against this server in Docker on Windows; the
+[example and smoke runner](examples/README.md) describe the verified internal
+Docker network configuration and retain its evidence. That run did not verify
+Compose's published Windows port or connect the UI to scoring.
 
 ```powershell
 python -m unittest development.tests.test_simspot_ui -v
