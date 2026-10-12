@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-12",
+  "host_platform": "Windows",
+  "generation": {
+    "provider": "sapiens",
+    "model_source": "Sapiens host configuration",
+    "chief_id": "sapi_68886c03b567",
+    "specialist_id": "sapi_faebfd16556c",
+    "specialist_name": "N8nComposer",
+    "turn_id": "10989fa595fb4b0eb4d6139fe9113957",
+    "state": "Completed",
+    "prompt_digest": "700b8cd6702bbeb2ffc603355d15204b7d9f581a8c89376dffd44b1fe18a4083",
+    "standard_graph_validation": "passed"
+  },
+  "execution": {
+    "challenge": "simspot-customer-discovery",
+    "seed": 0,
+    "run_id": "run-5214e2d1be9548ecb4bb2aa8e6e893f2",
+    "runtime": "n8n 2.42.3 in Docker",
+    "workflow_digest": "4952718d64228695a1d578b521e506c47133eb812c49f3be1b301304e4eaab33",
+    "run_log_digest": "5db00972f774bdfd707bef649040c32392035d92136b280a3c126e5256e0c24f",
+    "termination_reason": "completed",
+    "execution_pass": true,
+    "business_calls": 13,
+    "deterministic_points": 7.5,
+    "deterministic_maximum": 8,
+    "failed_deterministic_checks": ["efficiency"],
+    "strict_smoke_pass": false,
+    "judge_enabled": false,
+    "score_0_10": null,
+    "status": "awaiting_llm_judge"
+  },
+  "local_evidence_directory": "runs/sapiens-composer-cli-20261012",
+  "limitations": [
+    "The generated candidate needs call-count optimization; it did not pass every local check.",
+    "Only development seed 0 was executed for this generated candidate; no held-out or scored runs.",
+    "This uses deterministic customer responses from benchmark SimSpot, not live model-backed customer Routines.",
+    "The browser UI database is still separate from the benchmark environment.",
+    "Raw local evidence is ignored by Git and is not bundled with this metadata."
+  ]
+}

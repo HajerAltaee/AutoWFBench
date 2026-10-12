@@ -69,5 +69,7 @@ used. No judge or scored benchmark is invoked.
 This artifact uses the UI's GET/POST/PATCH API, so it does not pass through the
 production graph compiler, which targets authenticated benchmark POST operations.
 There is no new Sapiens callback or public relay interface. This demonstrates
-CLI orchestration, real workflow authoring, and local execution; a production
-Composer provider adapter would be a subsequent change.
+CLI orchestration, real workflow authoring, and local execution. The optional
+Composer provider adapter is documented in
+`documentation/sapiens-simspot-integration.md`; it authors typed graphs for the
+benchmark API and does not connect this UI database to benchmark state.

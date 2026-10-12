@@ -48,7 +48,85 @@ and delivery mechanism separately.
 - Store only fields permitted by the customer's explicit consent scope.
 - Do not treat Sapiens prose as authoritative CRM state; verify SimSpot readback.
 
-## Windows verification
+## Optional Sapiens Composer backend
+
+Composer generation now accepts `AWB_COMPOSER_PROVIDER=sapiens`; the default remains
+`codex`. The existing `compose` command uses the selected backend without changing
+the protected CLI or benchmark contracts. Generation sends one public authoring
+request through the documented Sapiens CLI to Chief, who selects or creates the
+`N8nComposer` specialist. It does not schedule a customer Routine.
+
+From the repository root in PowerShell, with an authenticated Sapiens host already
+running, point to its **Python entrypoint**, not the `.cmd` launcher:
+
+```powershell
+$env:SAPIENS_CLI = (Resolve-Path ../sapiens4-latest/sapiens4).Path
+$env:SAPIENS4_URL = 'http://127.0.0.1:4174'
+python -m development.tools.smoke_sapiens_composer --output runs/sapiens-composer-local
+```
+
+This authors and validates one typed graph without executing or scoring it. To
+reuse that graph and execute only development seed 0 in pinned Docker n8n:
+
+```powershell
+python -m development.tools.smoke_sapiens_composer --output runs/sapiens-composer-local --execute
+```
+
+The smoke command explicitly disables the judge. Its total remains `null` and its
+benchmark status stays `awaiting_llm_judge`; success requires verified execution
+and every deterministic criterion passing, not a fabricated overall score. It
+targets the authenticated benchmark SimSpot environment, **not** the browser UI's
+separate SQLite database. It is distinct from the UI lead-creation smoke described
+in `development/simspot_ui/examples/README.md`.
+
+For an explicitly authorized future scored Composer run, setting
+`$env:AWB_COMPOSER_PROVIDER = 'sapiens'` selects the backend for the usual `compose`
+command. That command still runs its existing development search and held-out
+judging; selecting Sapiens does **not** make it unscored. Generation's model comes
+from the Sapiens host configuration; it does not override the judge model.
+
+Each generation directory retains the public prompt/schema, submission receipt,
+final observation, typed graph, validated native workflow and provenance. Only a
+successful `Completed` observation for the accepted turn permits compilation.
+An early output file, waiting clarification, failed call or malformed graph is
+not accepted as success. The native workflow passes the same graph compiler and
+validation used by Codex.
+
+On an observation timeout, the host may still be working. Re-run with the same
+output directory to observe the **same** accepted turn; no duplicate chat is sent.
+`SAPIENS_COMPOSER_TIMEOUT` controls the observation timeout in seconds (default
+1800). If submission itself has an uncertain outcome, generation stops: inspect
+Chief history through the CLI before making any explicit retry. Do not delete the
+receipt to retry blindly. A changed host, prompt or provider needs a fresh directory.
+
+The CLI argument contains file paths instead of a large JSON prompt, avoiding
+Windows command-line length limits. Child CLI processes do not inherit `AWB_` or
+`AUTOWFBENCH_` variables. The running Sapiens host has its own permissions: the
+authoring file restriction is a prompt boundary, **not an OS sandbox**. Use a
+dedicated host/workspace with only public authoring material; never pass secrets
+or hidden evaluator data. Generated code is untrusted and must be reviewed before
+any execution outside the isolated local development environment.
+
+### First adapter verification, 2026-10-12
+
+- 72/72 local development tests passed on Windows, including 13 adapter/smoke tests.
+- The unchanged benchmark lock verified all 28 protected files.
+- A live CLI submission to Chief delegated to `N8nComposer`, completed, and returned
+  a typed graph accepted by the standard compiler. Cached reuse did not resubmit.
+- The compiled workflow ran in Docker n8n against fresh SimSpot development seed 0.
+  Execution completed; all functional deterministic checks passed. It used 13
+  business calls and failed the efficiency criterion, yielding **7.5/8 deterministic
+  points**, with overall score **null**. The strict smoke command therefore exited
+  nonzero. This is a working transport/authoring/execution integration, not a fully
+  passing candidate or a scored benchmark result.
+- The generated candidate still needs call-count optimization and validation across
+  the other cases. No repair generation or judge was started for this adapter test.
+
+Portable evidence metadata is in `development/results/sapiens-composer-smoke.json`.
+The public prompts, receipt, candidate and full local evidence remain under the
+ignored `runs/sapiens-composer-cli-20261012/` directory on the test machine.
+
+## Earlier Windows verification
 
 - Sapiens Routine contract suite: 15 tests passed.
 - Sapiens Windows suite: 8 tests passed.

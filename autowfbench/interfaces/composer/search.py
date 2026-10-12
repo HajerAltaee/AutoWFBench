@@ -4,6 +4,7 @@ import os
 import secrets
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -69,21 +70,117 @@ def public_input(challenge_id):
     return {"challenge": load_challenge(challenge_id)["definition"], "apps": apps, "development_preview":preview, "submission_schema": read_json(ROOT / "benchmark/schemas/submission.schema.json")}
 
 
-def generate(public, directory, previous=None, feedback=None):
+def _sapiens_generate(directory, prompt):
+    """Submit once through Chief; observing again resumes the same accepted turn."""
+    script = Path(os.environ.get("SAPIENS_CLI", "")).resolve()
+    if not script.is_file():
+        raise ValueError("Set SAPIENS_CLI to the Sapiens checkout's sapiens4 Python entrypoint")
+    url = os.environ.get("SAPIENS4_URL", "http://127.0.0.1:4174")
+    timeout = int(os.environ.get("SAPIENS_COMPOSER_TIMEOUT", "1800"))
+    if timeout <= 0:
+        raise ValueError("SAPIENS_COMPOSER_TIMEOUT must be positive")
+    command = [sys.executable, str(script), "--url", url, "--format", "json"]
+    env = {k:v for k,v in os.environ.items() if not k.startswith(("AWB_", "AUTOWFBENCH_"))}
+    env["PYTHONUTF8"] = "1"
+    receipt_path = directory / "sapiens-request.json"
+    identity = {"prompt_digest":digest(prompt), "cli":str(script), "url":url}
+
+    def invoke(args, label, seconds):
+        with (directory / (label + "-stderr.log")).open("w", encoding="utf-8") as err:
+            result = subprocess.run(command + args, cwd=script.parent, env=env,
+                                    stdout=subprocess.PIPE, stderr=err, text=True,
+                                    encoding="utf-8", timeout=seconds)
+        try:
+            envelope = json.loads(result.stdout)
+        except (ValueError, TypeError) as exc:
+            raise RuntimeError("Sapiens returned invalid JSON; inspect the host before resubmitting") from exc
+        save_json(directory / (label + ".json"), envelope)
+        if not isinstance(envelope, dict) or envelope.get("schema_version") != 1:
+            raise RuntimeError("Unsupported Sapiens CLI envelope")
+        if result.returncode or envelope.get("ok") is not True:
+            raise RuntimeError("Sapiens did not complete successfully; inspect " + str(directory / (label + ".json")))
+        data = envelope.get("data")
+        if not isinstance(data, dict):
+            raise RuntimeError("Sapiens CLI returned no structured result")
+        return data
+
+    if receipt_path.exists():
+        receipt = read_json(receipt_path)
+        if receipt.get("identity") != identity:
+            raise ValueError("Sapiens host, CLI or prompt changed; use a fresh output directory")
+    else:
+        receipt = {"identity":identity, "state":"submitting"}
+        # Exclusive creation also prevents concurrent callers from submitting twice.
+        with receipt_path.open("x", encoding="utf-8") as handle:
+            json.dump(receipt, handle)
+        request = (
+            "Chief: coordinate the existing N8nComposer specialist (create one only if needed). "
+            "This is workflow authoring only, not execution or benchmarking. "
+            f"Read the public authoring request at {directory / 'prompt.txt'} and JSON schema at {directory / 'schema.json'}. "
+            f"Write ONLY the schema-conforming typed graph JSON to {directory / 'response.json'}. "
+            "Do not write raw native n8n JSON. Do not inspect repository sources, credentials, "
+            "benchmark internals or other runs. Do not edit other files, run tests or execute workflows. "
+            "The specialist may read these two files and write that one output; unrelated workspace "
+            "changes are not part of this task. Report completion only after the file is saved."
+        )
+        try:
+            accepted = invoke(["chat", request, "--sapi", "chief"], "sapiens-submit", 60)
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError("Sapiens submission outcome unknown; inspect Chief history. Do not resubmit automatically") from exc
+        if any(not isinstance(accepted.get(key), str) or not accepted[key] for key in ("id", "agent")):
+            raise RuntimeError("Sapiens receipt has no turn/agent ID; inspect Chief history before resubmitting")
+        receipt.update(state="accepted", id=accepted["id"], agent=accepted["agent"])
+        save_json(receipt_path, receipt)
+    if receipt["state"] == "submitting":
+        raise RuntimeError("Previous Sapiens submission outcome is unknown; inspect Chief history, do not resubmit")
+    if receipt["state"] != "completed":
+        try:
+            observed = invoke(["conversation", "watch", receipt["id"], "--sapi", receipt["agent"]], "sapiens-watch", timeout)
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError("Sapiens observation timed out; host work may continue. Re-run in this directory to observe turn " + receipt["id"]) from exc
+        if observed.get("id") != receipt["id"] or observed.get("state") != "Completed":
+            raise RuntimeError("Sapiens has not confirmed completion of the accepted turn; inspect sapiens-watch.json")
+        receipt["state"] = "completed"
+        save_json(receipt_path, receipt)
+    if not (directory / "response.json").is_file():
+        raise RuntimeError("Sapiens completed without saving response.json")
+    save_json(directory / "provenance.json", {"provider":"sapiens", "model":"host-configured",
+              "prompt_digest":digest(prompt), "turn_id":receipt["id"], "agent":receipt["agent"]})
+
+
+def generate(public, directory, previous=None, feedback=None, *, provider=None):
+    provider = provider or os.environ.get("AWB_COMPOSER_PROVIDER", "codex")
+    if provider not in ("codex", "sapiens"):
+        raise ValueError("AWB_COMPOSER_PROVIDER must be codex or sapiens")
+    directory = directory.resolve()
     directory.mkdir(parents=True, exist_ok=True)
     prompt = PROMPT + json.dumps(public)
+    if provider == "sapiens":
+        prompt = prompt.replace("Do not call tools or inspect files.",
+                                "Author using only this request and the supplied graph schema; do not inspect other files.")
     if previous is not None or feedback:
         prompt += "\nRepair using these development observations. Return the full typed graph, not raw n8n JSON.\n" + json.dumps({"previous_native_workflow":previous,"feedback":feedback})
     prompt_path = directory / "prompt.txt"
-    if (directory / "response.json").exists():
-        if prompt_path.read_text() != prompt:
-            raise ValueError("Existing generation used a different prompt; use a fresh output directory")
+    if prompt_path.exists() and prompt_path.read_text(encoding="utf-8") != prompt:
+        raise ValueError("Existing generation used a different prompt/provider; use a fresh output directory")
+    if provider == "codex" and (directory / "sapiens-request.json").exists():
+        raise ValueError("Existing Sapiens generation; use a fresh output directory")
+    if provider == "codex" and (directory / "response.json").exists():
+        if not prompt_path.exists():
+            raise ValueError("Existing response has no authoring prompt; use a fresh output directory")
         workflow = compile_graph(read_json(directory / "response.json"), public["apps"])
         save_json(directory / "workflow.json", workflow)
         return workflow
-    prompt_path.write_text(prompt)
+    if provider == "sapiens" and (directory / "response.json").exists() and not (directory / "sapiens-request.json").exists():
+        raise ValueError("Existing response has no Sapiens receipt; use a fresh output directory")
+    prompt_path.write_text(prompt, encoding="utf-8")
     schema = SCHEMA
     save_json(directory / "schema.json", schema)
+    if provider == "sapiens":
+        _sapiens_generate(directory, prompt)
+        workflow = compile_graph(json.loads((directory / "response.json").read_text(encoding="utf-8")), public["apps"])
+        save_json(directory / "workflow.json", workflow)
+        return workflow
     binary = os.environ.get("CODEX_BIN") or shutil.which("codex")
     if not binary:
         raise ValueError("Set CODEX_BIN to the authenticated Codex CLI")
@@ -92,7 +189,7 @@ def generate(public, directory, previous=None, feedback=None):
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="composer-") as cwd, (directory / "events.jsonl").open("w") as out, (directory / "stderr.log").open("w") as err:
         proc = subprocess.run(command, input=prompt, text=True, cwd=cwd, env=env, stdout=out, stderr=err, timeout=600)
-    save_json(directory / "provenance.json", {"model":MODEL,"prompt_digest":digest(prompt),"seconds":round(time.monotonic()-started,3),"returncode":proc.returncode})
+    save_json(directory / "provenance.json", {"provider":"codex","model":MODEL,"prompt_digest":digest(prompt),"seconds":round(time.monotonic()-started,3),"returncode":proc.returncode})
     if proc.returncode:
         raise RuntimeError("codex exec failed; see " + str(directory / "stderr.log"))
     workflow = compile_graph(read_json(directory / "response.json"), public["apps"])
@@ -107,7 +204,7 @@ def evaluate(workflow, challenge_id, seeds, directory, runtime, judge_model=MODE
     def execute(request, cancel):
         return runtime.execute(workflow, request, cancel, directory / "n8n" / request["run_id"])
     solution = background_server(solution_handler(executor=execute))
-    manifest = {"id":"sol61-composer", "name":"Sol 6.1 composer", "version":digest(workflow)[:12], "runtime":"n8n-2.42.3", "description":"Generated from task and public simApps", "auth_env":"", "endpoint":f"http://127.0.0.1:{solution.server_port}"}
+    manifest = {"id":"autowfbench-composer", "name":"AutoWFBench composer", "version":digest(workflow)[:12], "runtime":"n8n-2.42.3", "description":"Generated from task and public simApps; authoring provider recorded in generation provenance", "auth_env":"", "endpoint":f"http://127.0.0.1:{solution.server_port}"}
     engine = Engine(directory / "runs", f"http://127.0.0.1:{judge.server_port}" if judge else None, token)
     results, feedback = [], []
     def run_case(case):

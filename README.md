@@ -1,6 +1,6 @@
 # AutoWFBench v2
 
-Sol 6.1 composes native n8n workflows for two stateful simApps challenges:
+Sol 6.1 composes native n8n workflows for three stateful simApps challenges:
 CRM qualification, SimSpot customer discovery and checkout repair. One composer; no
 task-specific templates.
 
@@ -26,13 +26,19 @@ Docker execution uses a fresh bind-mounted n8n workspace for each run and maps
 host loopback SimApp URLs to `host.docker.internal`. Run-scoped tokens remain
 redacted from retained logs.
 
-Generation uses `codex exec --model gpt-6.1-sol`, public tasks/API docs, read-only
+By default, generation uses `codex exec --model gpt-6.1-sol`, public tasks/API docs, read-only
 development observations and at most
 three candidates. Each is tested on development seeds 0, 2, 4. Numeric scores and
 public action traces inform repairs. The best candidate is frozen, then run on
 held-out seeds 6–11 twice. No hold-out feedback enters generation. Each generation,
 workflow, execution, model response and judge decision is retained in `runs/`.
 The same workflow is reused without edits across a challenge's cases.
+
+An optional `AWB_COMPOSER_PROVIDER=sapiens` backend delegates authoring through the
+Sapiens CLI to Chief and an n8n specialist, then applies the same graph validation.
+See [Sapiens setup and unscored smoke instructions](documentation/sapiens-simspot-integration.md#optional-sapiens-composer-backend).
+The normal `compose` command still performs scored search and held-out judging;
+use the documented development smoke command when judging must remain disabled.
 
 ```sh
 python -m autowfbench evaluate crm-lead-qualification path/to/workflow.json
