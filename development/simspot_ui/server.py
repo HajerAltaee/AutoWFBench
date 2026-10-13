@@ -55,6 +55,8 @@ def handler_for(store, public_port=None):
                             return self.respond(200, store.contact(parts[2]))
                         if parts[3] == "activities":
                             return self.respond(200, store.activities(parts[2]))
+                        if parts[3] == "messages":
+                            return self.respond(200, store.customer_messages(parts[2]))
                 elif self.command in ("PATCH", "POST"):
                     # Browser writes must be same-origin; JSON prevents simple cross-site form posts.
                     if self.headers.get("Origin") != f"http://{host}":
@@ -70,8 +72,9 @@ def handler_for(store, public_port=None):
                             return self.respond(201, store.create_contact(payload))
                         if len(parts) == 3 and self.command == "PATCH":
                             return self.respond(200, store.update(parts[2], payload))
-                        if len(parts) == 4 and self.command == "POST" and parts[3] in ("notes", "tasks"):
-                            return self.respond(201, store.create_activity(parts[2], "note" if parts[3] == "notes" else "task", payload))
+                        if len(parts) == 4 and self.command == "POST" and parts[3] in ("notes", "tasks", "messages"):
+                            kind = {"notes": "note", "tasks": "task", "messages": "message"}[parts[3]]
+                            return self.respond(201, store.create_activity(parts[2], kind, payload))
                 return self.respond(404, {"error": "Not found"})
             except KeyError:
                 self.respond(404, {"error": "Contact not found"})

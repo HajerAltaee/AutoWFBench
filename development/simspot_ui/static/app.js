@@ -101,7 +101,9 @@ async function showContact(id, version) {
     if (!activities.length) feed.append(el("div", "No activity on this record.", "card empty"));
     for (const item of activities) {
       const card = el("article", undefined, "card activity");
-      card.append(el("h3", item.kind === "note" ? "Note" : item.title), el("small", new Date(item.created_at).toLocaleString()));
+      const heading = item.kind === "note" ? "Note" : item.kind === "message" ? "Customer message" : item.title;
+      const timestamp = item.kind === "message" ? item.received_at : item.created_at;
+      card.append(el("h3", heading), el("small", new Date(timestamp).toLocaleString()));
       if (item.kind === "task") card.append(el("p", `${item.task_type} · ${item.status} · ${item.priority} priority`), el("p", `Activity date: ${item.due_date} ${item.due_time} · ${item.assigned_to}`));
       const associated = item.company_id ? `2 records: ${fullName(contact)} and ${contact.company_name}` : `1 record: ${fullName(contact)}`;
       card.append(el("p", item.body), el("small", `Associated with ${associated}`)); feed.append(card);

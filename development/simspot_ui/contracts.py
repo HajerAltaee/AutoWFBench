@@ -1,5 +1,5 @@
 """Public input contracts for the experimental UI, independent of storage/HTTP."""
-from datetime import date, time
+from datetime import date, datetime, time, timezone
 import re
 
 
@@ -49,13 +49,26 @@ def new_contact(payload):
 
 
 def activity(payload, kind):
+    if kind == "message":
+        fields(payload, ("body", "received_at", "source_id"), ("body", "received_at", "source_id"))
+        received = text(payload["received_at"], "Received at", 40)
+        try:
+            timestamp = datetime.fromisoformat(received.replace("Z", "+00:00"))
+            if timestamp.tzinfo is None:
+                raise ValueError()
+        except ValueError as exc:
+            raise InvalidInput("received_at must be an ISO 8601 timestamp with timezone") from exc
+        return {"body": text(payload["body"], "Message", 10000),
+                "received_at": timestamp.astimezone(timezone.utc).isoformat(),
+                "source_id": text(payload["source_id"], "Source ID", 200),
+                "direction": "inbound"}
     if kind == "note":
         fields(payload, ("body", "include_company"), ("body",))
         include_company = payload.get("include_company", True)
         if not isinstance(include_company, bool):
             raise InvalidInput("include_company must be a boolean")
         return {"body": text(payload["body"], "Note", 10000), "include_company": include_company}
-    fields(payload, ("title", "body", "due_date", "due_time", "task_type", "priority", "include_company"), ("title", "due_date"))
+    fields(payload, ("title", "body", "due_date", "due_time", "task_type", "priority", "include_company", "idempotency_key"), ("title", "due_date"))
     if not isinstance(payload.get("include_company", True), bool):
         raise InvalidInput("include_company must be a boolean")
     result = {
@@ -68,6 +81,8 @@ def activity(payload, kind):
         "status": "Not started", "assigned_to": "Demo Operator",
         "include_company": payload.get("include_company", True),
     }
+    if "idempotency_key" in payload:
+        result["idempotency_key"] = text(payload["idempotency_key"], "Idempotency key", 200)
     try:
         if date.fromisoformat(result["due_date"]).isoformat() != result["due_date"]:
             raise ValueError()

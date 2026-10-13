@@ -100,14 +100,30 @@ class Store:
             return [{"activity_id": row[0], "kind": row[1], "created_at": row[2], **json.loads(row[3])}
                     for row in db.execute("SELECT id,kind,created_at,payload FROM activities WHERE contact_id=? ORDER BY rowid DESC", (ident,))]
 
+    def customer_messages(self, ident):
+        """Only customer-authored inbound messages count toward follow-up recency."""
+        return sorted((item for item in self.activities(ident) if item["kind"] == "message"),
+                      key=lambda item: item["received_at"], reverse=True)
+
     def create_activity(self, ident, kind, payload):
-        if kind not in ("note", "task"):
+        if kind not in ("note", "task", "message"):
             raise InvalidInput("Unsupported activity")
         values = activity(payload, kind)
         aid, created = str(uuid.uuid4()), datetime.now(timezone.utc).isoformat()
         with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
             record = self._contact(db, ident)
-            include_company = values.pop("include_company", True)
+            key_field = "source_id" if kind == "message" else "idempotency_key" if kind == "task" else None
+            if key_field and key_field in values:
+                for row in db.execute("SELECT id,created_at,payload FROM activities WHERE contact_id=? AND kind=?", (ident, kind)):
+                    previous = json.loads(row[2])
+                    if previous.get(key_field) == values[key_field]:
+                        if kind == "message" and any(previous[field] != values[field] for field in ("body", "received_at")):
+                            raise InvalidInput("Source ID already refers to a different message")
+                        if kind == "task" and any(previous.get(field) != value for field, value in values.items() if field != "include_company"):
+                            raise InvalidInput("Idempotency key already refers to a different task")
+                        return {"activity_id": row[0], "kind": kind, "created_at": row[1], **previous}
+            include_company = values.pop("include_company", kind != "message")
             values["contact_id"] = ident
             if include_company and record["company_id"]:
                 values["company_id"] = record["company_id"]

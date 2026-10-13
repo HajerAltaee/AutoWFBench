@@ -57,6 +57,40 @@ recurrence, email sending, meetings, import, arbitrary association editing, and 
 creation are not implemented. Companies are a read-only fixture list. The local
 three-business-day task default excludes weekends but not holidays.
 
+## Customer-message and follow-up test seam
+
+The experimental server now supports **inbound customer messages**, kept distinct
+from internal notes and tasks. `GET /api/contacts/<id>/messages` returns only those
+messages, newest `received_at` first. `POST /api/contacts/<id>/messages` accepts
+JSON such as:
+
+```json
+{"source_id":"sheet-LEAD-001-message-1","body":"Could you explain the pilot?","received_at":"2026-10-10T07:00:00Z"}
+```
+
+`source_id` is stable across replays. Reposting an identical message returns the
+existing record without adding an activity; reusing it for different text or time
+is rejected. Timestamps must include a timezone and are normalized to UTC. Tasks
+may optionally include an `idempotency_key`; reposting the same task and key on
+the same contact returns the existing task, while changed task content requires a
+new key. Browser write guards still apply to both endpoints.
+Neither endpoint sends email or creates an external calendar event.
+
+The [ten-row fictional Google Sheet](https://docs.google.com/spreadsheets/d/1CAMdkTUY8SaaPaeH7ZeI2n-B7TKuLbuhNbfOPUxl4P4/edit)
+is today's lead-source fixture. Maya and Aisha already exist in the seeded CRM;
+the other eight rows are new emails. The two `fixture_last_customer_message_*`
+columns are **bootstrap data**, not the follow-up decision source. A runner must
+first import those as inbound CRM messages and then determine 48-hour recency from
+the CRM message endpoint. Internal notes and follow-up tasks cannot refresh that
+clock. The no-message row must be skipped rather than treated as overdue.
+
+This is a storage/API seam, **not yet a Google Sheets reader or a Sapiens Routine**.
+The Codex Google Drive connection does not grant the separate Sapiens runtime
+access to the Sheet. That runtime still needs a documented credentialed Sheets
+access path (or an authorized browser session) before a 24-hour unattended flow
+can be validated. A 24-hour schedule must be owned by Sapiens Routines; do not
+substitute a local timer or claim the current smoke workflow covers this case.
+
 Five intended company associations are seeded (OrbitOps, Northstar, Harbor,
 MedAxis, Quantum). The captured real import instead autoassociated a contact with
 example.com; real company setup was still in progress. Local associations therefore

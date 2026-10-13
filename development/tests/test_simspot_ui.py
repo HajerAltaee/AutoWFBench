@@ -115,6 +115,41 @@ class SimSpotUIStateTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             self.store.create_activity("MISSING", "note", {"body": "No orphan"})
 
+    def test_inbound_message_recency_ignores_notes_and_is_idempotent(self):
+        ident = "CONTACT-1001"
+        older = {"source_id": "lead-001-message-1", "body": "First reply", "received_at": "2026-10-09T07:00:00Z"}
+        newer = {"source_id": "lead-001-message-2", "body": "Changed budget", "received_at": "2026-10-12T07:00:00+00:00"}
+        first = self.store.create_activity(ident, "message", newer)
+        self.store.create_activity(ident, "note", {"body": "Internal note is not customer contact"})
+        self.store.create_activity(ident, "message", older)
+        self.assertEqual(self.store.create_activity(ident, "message", newer), first)
+        self.assertEqual([m["body"] for m in Store(self.path).customer_messages(ident)], ["Changed budget", "First reply"])
+        self.assertEqual(len(self.store.activities(ident)), 3)
+        with self.assertRaises(InvalidInput):
+            self.store.create_activity(ident, "message", {**newer, "body": "Conflicting message"})
+        self.assertEqual(len(self.store.activities(ident)), 3)
+
+    def test_follow_up_task_key_prevents_repeat(self):
+        ident = "CONTACT-3000"
+        payload = {"title": "Follow up with Aisha", "body": "Ask about the second team",
+                   "due_date": "2026-10-14", "idempotency_key": "follow-up:CONTACT-3000:lead-002-message-1"}
+        created = self.store.create_activity(ident, "task", payload)
+        self.assertEqual(Store(self.path).create_activity(ident, "task", payload), created)
+        with self.assertRaises(InvalidInput):
+            self.store.create_activity(ident, "task", {**payload, "body": "Requirements changed to company-wide rollout"})
+        self.assertEqual(len(self.store.activities(ident)), 1)
+        self.assertEqual(self.store.customer_messages(ident), [])
+
+    def test_invalid_message_has_no_side_effects(self):
+        for payload in ({"source_id": "m1", "body": "Reply", "received_at": "2026-10-13"},
+                        {"source_id": "m1", "body": "Reply", "received_at": "not a timestamp"},
+                        {"source_id": "", "body": "Reply", "received_at": "2026-10-13T00:00:00Z"},
+                        {"source_id": "m1", "body": " ", "received_at": "2026-10-13T00:00:00Z"},
+                        {"source_id": "m1", "body": "Reply", "received_at": "2026-10-13T00:00:00Z", "direction": "outbound"}):
+            with self.subTest(payload=payload), self.assertRaises(InvalidInput):
+                self.store.create_activity("CONTACT-1001", "message", payload)
+        self.assertEqual(self.store.activities("CONTACT-1001"), [])
+
     def test_user_text_is_data_and_client_has_no_html_injection_sink(self):
         malicious = '<img src=x onerror="alert(1)"><script>alert(2)</script>'
         self.store.update("CONTACT-1001", {"job_title": malicious})
@@ -172,6 +207,19 @@ class SimSpotUIHTTPTests(unittest.TestCase):
         status, _, body = self.request("GET", f"/api/contacts/{ident}")
         self.assertEqual((status, json.loads(body)["job_title"]), (200, "Founder"))
         self.assertEqual(self.request("POST", "/api/contacts", {"email": "NORA@example.com", "first_name": "Duplicate", "last_name": "Vale"}, self.good_headers())[0], 400)
+
+    def test_http_inbound_message_and_repeat_task(self):
+        ident = "CONTACT-1001"
+        message = {"source_id": "sheet-lead-001-msg-1", "body": "Budget is unclear", "received_at": "2026-10-10T07:00:00Z"}
+        for _ in range(2):
+            self.assertEqual(self.request("POST", f"/api/contacts/{ident}/messages", message, self.good_headers())[0], 201)
+        status, _, body = self.request("GET", f"/api/contacts/{ident}/messages")
+        self.assertEqual(status, 200)
+        self.assertEqual([item["body"] for item in json.loads(body)], ["Budget is unclear"])
+        task = {"title": "Clarify budget", "due_date": "2026-10-14", "idempotency_key": "follow-up:sheet-lead-001-msg-1"}
+        for _ in range(2):
+            self.assertEqual(self.request("POST", f"/api/contacts/{ident}/tasks", task, self.good_headers())[0], 201)
+        self.assertEqual(len(json.loads(self.request("GET", f"/api/contacts/{ident}/activities")[2])), 2)
 
     def test_cross_origin_non_json_and_untrusted_host_are_rejected(self):
         good = self.good_headers()
