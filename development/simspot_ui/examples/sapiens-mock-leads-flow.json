@@ -1,0 +1,944 @@
+{
+  "name": "SimSpot Local Mock Lead Import and Follow Up",
+  "nodes": [
+    {
+      "id": "cc8477e3-2689-4fbb-8795-36a0604bc187",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "9aff3304-cbc5-4432-8900-7229ebda481a",
+      "name": "Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{}",
+        "options": {}
+      }
+    },
+    {
+      "id": "ec7c0126-ec3d-4155-90b3-383ce1ff0156",
+      "name": "Prepare Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$input.first().json;\nif (!c || !c.source || !Array.isArray(c.source.leads) || c.source.leads.length!==10) throw new Error('Expected ten source leads');\nif (typeof c.run_id!=='string' || !c.run_id || typeof c.source.source_name!=='string' || !c.source.source_name) throw new Error('Invalid context');\nif (!c.environment || typeof c.environment.base_url!=='string' || !/^https?:\\/\\//.test(c.environment.base_url)) throw new Error('Invalid base URL');\nif (typeof c.ui_origin!=='string' || !/^http:\\/\\/(127\\.0\\.0\\.1|localhost):\\d+$/.test(c.ui_origin)) throw new Error('Invalid UI origin');\nif (typeof c.now!=='string' || !Number.isFinite(Date.parse(c.now))) throw new Error('Invalid supplied now');\nconst ids=new Set(),emails=new Set();\nreturn c.source.leads.map((lead,i)=>{\n if (!lead || typeof lead.lead_id!=='string' || !lead.lead_id || typeof lead.email!=='string' || !lead.email.trim() ||\n typeof lead.first_name!=='string' || !lead.first_name.trim() || typeof lead.last_name!=='string' || !lead.last_name.trim() ||\n typeof lead.company!=='string' || typeof lead.discovery_context!=='string' || typeof lead.job_title!=='string' ||\n typeof lead.fixture_last_customer_message_utc!=='string' || typeof lead.fixture_last_customer_message_excerpt!=='string') throw new Error('Invalid lead '+i);\n const email=lead.email.trim().toLowerCase();\n if (ids.has(lead.lead_id)||emails.has(email)) throw new Error('Duplicate source identity');\n ids.add(lead.lead_id);emails.add(email);\n const timed=!!lead.fixture_last_customer_message_utc.trim(),bodied=!!lead.fixture_last_customer_message_excerpt.trim();\n if (timed!==bodied || (timed&&!Number.isFinite(Date.parse(lead.fixture_last_customer_message_utc)))) throw new Error('Invalid fixture '+lead.lead_id);\n return {json:{lead,source_name:c.source.source_name,now:c.now},pairedItem:0};\n});"
+      }
+    },
+    {
+      "id": "80b01bfe-5aad-4271-9bbb-ebba641963fd",
+      "name": "Loop Leads",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "d3549101-5bc4-47e3-a89b-b55c5eac7966",
+      "name": "Search Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts?q=' + encodeURIComponent($json.lead.email) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "69ada8ef-d774-4821-8d20-e10e5696849f",
+      "name": "Plan Contact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const s=$('Loop Leads').item.json, rows=JSON.parse($input.first().json.body);\nif (!Array.isArray(rows)) throw new Error('Contact search shape');\nconst exact=rows.filter(x=>x&&typeof x.email==='string'&&x.email.toLowerCase()===s.lead.email.trim().toLowerCase());\nif (exact.length>1) throw new Error('Duplicate CRM email');\nconst old=exact[0]||null;\nif (old&&(!old.contact_id||typeof old.contact_id!=='string')) throw new Error('Missing contact ID');\nreturn [{json:{...s,original_contact:old,contact_created:!old,method:old?'GET':'POST',\npath:old?'/api/contacts/'+encodeURIComponent(old.contact_id):'/api/contacts',\nbody:old?null:{email:s.lead.email.trim(),first_name:s.lead.first_name.trim(),last_name:s.lead.last_name.trim()}},pairedItem:0}];"
+      }
+    },
+    {
+      "id": "9ab9ec3d-a362-4887-ad87-ad8bc8e15d99",
+      "name": "Resolve Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        300
+      ],
+      "parameters": {
+        "method": "={{ ['GET', 'POST', 'PATCH'].includes($json.method) ? $json.method : 'INVALID' }}",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts' + $json.path.slice('/api/contacts'.length) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      }
+    },
+    {
+      "id": "6e86c55d-3a88-42b6-9802-5d776c658de3",
+      "name": "Plan Job Title",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const s=$('Plan Contact').item.json,r=JSON.parse($input.first().json.body),o=s.original_contact;\nif (!r||typeof r.contact_id!=='string'||!r.contact_id||typeof r.email!=='string'||r.email.toLowerCase()!==s.lead.email.trim().toLowerCase()) throw new Error('Contact resolution mismatch');\nif (o) {\n if (r.contact_id!==o.contact_id||r.lifecycle_stage!==o.lifecycle_stage||r.company_id!==o.company_id||\n r.company_name!==o.company_name||r.first_name!==o.first_name||r.last_name!==o.last_name) throw new Error('Existing identity changed');\n} else if (r.first_name!==s.lead.first_name.trim()||r.last_name!==s.lead.last_name.trim()) throw new Error('Created name mismatch');\nconst change=r.job_title!==s.lead.job_title.trim();\nreturn [{json:{...s,contact:r,contact_id:r.contact_id,title_updated:change,method:change?'PATCH':'GET',\npath:'/api/contacts/'+encodeURIComponent(r.contact_id),body:change?{job_title:s.lead.job_title.trim()}:null},pairedItem:0}];"
+      }
+    },
+    {
+      "id": "06aba3fa-0a39-435c-a0fd-a78f55db065b",
+      "name": "Set Job Title",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        300
+      ],
+      "parameters": {
+        "method": "={{ ['GET', 'POST', 'PATCH'].includes($json.method) ? $json.method : 'INVALID' }}",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts' + $json.path.slice('/api/contacts'.length) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      }
+    },
+    {
+      "id": "db6d2698-fd3e-4bcb-9483-76fd455669ae",
+      "name": "Read Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts/' + encodeURIComponent($('Plan Job Title').item.json.contact_id) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "a4f54233-b298-494f-a39f-ce4a4e57bdc9",
+      "name": "Verify Contact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const s=$('Plan Job Title').item.json,r=JSON.parse($input.first().json.body),o=s.original_contact;\nif (!r||r.contact_id!==s.contact_id||typeof r.email!=='string'||r.email.toLowerCase()!==s.lead.email.trim().toLowerCase()||\n r.job_title!==s.lead.job_title.trim()||r.first_name!==s.contact.first_name||r.last_name!==s.contact.last_name||\n r.lifecycle_stage!==s.contact.lifecycle_stage||r.company_id!==s.contact.company_id||r.company_name!==s.contact.company_name) throw new Error('Contact read-back mismatch');\nif (o&&(r.lifecycle_stage!==o.lifecycle_stage||r.company_id!==o.company_id)) throw new Error('CRM association changed');\nreturn [{json:{...s,contact:r},pairedItem:0}];"
+      }
+    },
+    {
+      "id": "a7d4ffb3-dc46-4034-a692-e308770a7053",
+      "name": "Read Activities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2420,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts/' + encodeURIComponent($json.contact_id) + '/activities' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "9cd30987-a19a-4c84-a412-53944d2c432d",
+      "name": "Plan Note",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const s=$('Verify Contact').item.json,activities=JSON.parse($input.first().json.body);\nif (!Array.isArray(activities)) throw new Error('Activities shape');\nconst note='Source '+s.source_name+' / '+s.lead.lead_id+'; company: '+s.lead.company+'; discovery context: '+s.lead.discovery_context;\nconst existing=activities.filter(a=>a&&a.kind==='note'&&a.body===note);\nif (existing.length>1) throw new Error('Duplicate source note');\nconst create=!existing.length;\nreturn [{json:{...s,activities,note_text:note,note_created:create,method:create?'POST':'GET',\npath:'/api/contacts/'+encodeURIComponent(s.contact_id)+(create?'/notes':'/activities'),\nbody:create?{body:note,include_company:false}:null},pairedItem:0}];"
+      }
+    },
+    {
+      "id": "e5956008-e717-497b-b770-f3489955a540",
+      "name": "Ensure Note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2860,
+        300
+      ],
+      "parameters": {
+        "method": "={{ ['GET', 'POST', 'PATCH'].includes($json.method) ? $json.method : 'INVALID' }}",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts' + $json.path.slice('/api/contacts'.length) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      }
+    },
+    {
+      "id": "85f9415f-1aae-407c-b3a2-7c3cdeeb5367",
+      "name": "Verify Note",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3080,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const s=$('Plan Note').item.json,r=JSON.parse($input.first().json.body);\nconst note=s.note_created?r:(Array.isArray(r)?r.find(a=>a&&a.kind==='note'&&a.body===s.note_text):null);\nif (!note||note.kind!=='note'||note.contact_id!==s.contact_id||note.body!==s.note_text||typeof note.activity_id!=='string') throw new Error('Note verification failed');\nreturn [{json:{...s,note_id:note.activity_id},pairedItem:0}];"
+      }
+    },
+    {
+      "id": "41f14b9b-f187-401f-8f96-99c905156874",
+      "name": "Plan Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3300,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const s=$input.first().json,l=s.lead,wanted=!!l.fixture_last_customer_message_utc.trim(),sourceId=s.source_name+':'+l.lead_id+':customer-message';\nconst present=s.activities.filter(a=>a&&a.kind==='message'&&a.source_id===sourceId);\nif (present.length>1) throw new Error('Duplicate fixture messages');\nif (present.length&&(!wanted||present[0].body!==l.fixture_last_customer_message_excerpt||\n Date.parse(present[0].received_at)!==Date.parse(l.fixture_last_customer_message_utc)||present[0].direction!=='inbound')) throw new Error('Fixture message mismatch');\nconst create=wanted&&!present.length;\nreturn [{json:{...s,message_created:create,fixture_source_id:sourceId,method:create?'POST':'GET',\npath:'/api/contacts/'+encodeURIComponent(s.contact_id)+'/messages',\nbody:create?{body:l.fixture_last_customer_message_excerpt,received_at:l.fixture_last_customer_message_utc,source_id:sourceId}:null},pairedItem:0}];"
+      }
+    },
+    {
+      "id": "e6e6dd91-54ce-42c1-96d5-fd67d2420cd8",
+      "name": "Ensure Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3520,
+        300
+      ],
+      "parameters": {
+        "method": "={{ ['GET', 'POST', 'PATCH'].includes($json.method) ? $json.method : 'INVALID' }}",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts' + $json.path.slice('/api/contacts'.length) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      }
+    },
+    {
+      "id": "5de9c2c0-3f4e-47eb-bd1e-c6c1130da615",
+      "name": "Verify Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3740,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const s=$('Plan Message').item.json,r=JSON.parse($input.first().json.body);\nif (s.message_created&&(!r||r.kind!=='message'||r.direction!=='inbound'||r.contact_id!==s.contact_id||\n r.source_id!==s.fixture_source_id||r.body!==s.lead.fixture_last_customer_message_excerpt||\n Date.parse(r.received_at)!==Date.parse(s.lead.fixture_last_customer_message_utc)||typeof r.activity_id!=='string')) throw new Error('Fixture message creation mismatch');\nif (!s.message_created&&!Array.isArray(r)) throw new Error('Message read shape');\nreturn [{json:{...s,fixture_message_id:s.message_created?r.activity_id:(r.find(m=>m&&m.source_id===s.fixture_source_id)||{}).activity_id||null},pairedItem:0}];"
+      }
+    },
+    {
+      "id": "e1d7c81b-3157-4828-9221-91c99ca53f25",
+      "name": "Read Messages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3960,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts/' + encodeURIComponent($json.contact_id) + '/messages' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "2152451e-7faa-4fa3-94f2-449e83ef3e9b",
+      "name": "Evaluate Recency",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4180,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const s=$('Verify Message').item.json,messages=JSON.parse($input.first().json.body);\nif (!Array.isArray(messages)) throw new Error('CRM messages shape');\nfor (const m of messages) if (!m||m.kind!=='message'||m.direction!=='inbound'||m.contact_id!==s.contact_id||\n !Number.isFinite(Date.parse(m.received_at))||typeof m.activity_id!=='string') throw new Error('Invalid inbound message');\nif (s.lead.fixture_last_customer_message_utc.trim()) {\n const f=messages.find(m=>m.source_id===s.fixture_source_id);\n if (!f||f.body!==s.lead.fixture_last_customer_message_excerpt||\n Date.parse(f.received_at)!==Date.parse(s.lead.fixture_last_customer_message_utc)) throw new Error('Fixture absent from CRM messages');\n}\nmessages.sort((a,b)=>Date.parse(b.received_at)-Date.parse(a.received_at));\nconst last=messages[0]||null,overdue=!!last&&Date.parse(s.now)-Date.parse(last.received_at)>48*60*60*1000;\nreturn [{json:{...s,last_message:last?{activity_id:last.activity_id,source_id:last.source_id||null,received_at:last.received_at,body:last.body}:null,\n follow_up_due:overdue,follow_up_reason:!last?'no_inbound_message':overdue?'over_48_hours':'recent_or_exactly_48_hours'},pairedItem:0}];"
+      }
+    },
+    {
+      "id": "116581c4-89f7-4486-b59c-a742094f7f7c",
+      "name": "Read Current Activities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4400,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts/' + encodeURIComponent($json.contact_id) + '/activities' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "c8014ca1-3080-4a14-8ba3-3111e97cba31",
+      "name": "Plan Follow Up",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4620,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const s=$('Evaluate Recency').item.json,activities=JSON.parse($input.first().json.body);\nif (!Array.isArray(activities)) throw new Error('Current activities shape');\nconst last=s.last_message,key=last?'followup:'+s.lead.lead_id+':'+last.activity_id:null;\nconst existing=key?activities.filter(a=>a&&a.kind==='task'&&a.idempotency_key===key):[];\nif (existing.length>1) throw new Error('Duplicate follow-up tasks');\nconst create=s.follow_up_due&&!existing.length;\nconst topic=last?last.body.trim().replace(/\\s+/g,' ').slice(0,120):'';\nconst name=s.contact.first_name,company=s.contact.company_name||s.lead.company;\nconst title=create?'Follow up with '+name+' about '+topic:null;\nconst body=create?'Call '+name+(company?' at '+company:'')+' about their latest customer message: \"'+topic+'\". Context: '+s.lead.discovery_context:null;\nreturn [{json:{...s,task_created:create,task_key:key,existing_task_id:existing[0]?.activity_id||null,\n method:create?'POST':'GET',path:'/api/contacts/'+encodeURIComponent(s.contact_id)+(create?'/tasks':'/activities'),\n body:create?{title,body,due_date:s.now.slice(0,10),due_time:'09:00',task_type:'To-do',priority:'Medium',include_company:false,idempotency_key:key}:null},pairedItem:0}];"
+      }
+    },
+    {
+      "id": "c3d776c3-f7ca-4d96-8a73-4463bf1ff4c0",
+      "name": "Ensure Follow Up",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4840,
+        300
+      ],
+      "parameters": {
+        "method": "={{ ['GET', 'POST', 'PATCH'].includes($json.method) ? $json.method : 'INVALID' }}",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts' + $json.path.slice('/api/contacts'.length) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      }
+    },
+    {
+      "id": "68f4a5fe-3b03-44f4-91e1-ba6d6d3b50d3",
+      "name": "Read Final Activities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5060,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Context').first().json.environment.base_url.replace(/\\/$/, '') + '/api/contacts/' + encodeURIComponent($('Plan Follow Up').item.json.contact_id) + '/activities' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "={{ $('Context').first().json.ui_origin.replace(/^http:\\/\\//, '') }}"
+            },
+            {
+              "name": "Origin",
+              "value": "={{ $('Context').first().json.ui_origin }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "3e7d9eed-36e5-4b25-a138-e80f4e7d3593",
+      "name": "Finalize Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5280,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const s=$('Plan Follow Up').item.json,activities=JSON.parse($input.first().json.body);\nif (!Array.isArray(activities)) throw new Error('Final activities shape');\nconst notes=activities.filter(a=>a&&a.kind==='note'&&a.body===s.note_text);\nif (notes.length!==1||notes[0].activity_id!==s.note_id) throw new Error('Final note read-back mismatch');\nlet taskId=null;\nif (s.follow_up_due) {\n const tasks=activities.filter(a=>a&&a.kind==='task'&&a.idempotency_key===s.task_key);\n if (tasks.length!==1||typeof tasks[0].activity_id!=='string') throw new Error('Follow-up read-back mismatch');\n taskId=tasks[0].activity_id;\n if (s.task_created&&(tasks[0].title!==s.body.title||tasks[0].body!==s.body.body)) throw new Error('Follow-up content mismatch');\n if (!s.task_created&&taskId!==s.existing_task_id) throw new Error('Existing task identity changed');\n}\nreturn [{json:{lead_id:s.lead.lead_id,email:s.contact.email,contact_id:s.contact_id,first_name:s.contact.first_name,\n job_title:s.contact.job_title,lifecycle_stage:s.contact.lifecycle_stage,company_id:s.contact.company_id,\n contact_created:s.contact_created,title_updated:s.title_updated,note_id:s.note_id,note_created:s.note_created,\n fixture_message_id:s.fixture_message_id,message_created:s.message_created,last_inbound_message:s.last_message,\n follow_up_reason:s.follow_up_reason,follow_up_due:s.follow_up_due,follow_up_task_id:taskId,task_created:s.task_created},pairedItem:0}];"
+      }
+    },
+    {
+      "id": "2646bd11-13d1-4625-8697-3356f53be8db",
+      "name": "Submit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5500,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$('Context').first().json,rows=$input.all().map(x=>x.json);\nif (rows.length!==10||new Set(rows.map(x=>x.lead_id)).size!==10||new Set(rows.map(x=>x.contact_id)).size!==10) throw new Error('Incomplete lead processing');\nconst trace=rows.map(r=>({timestamp:c.now,kind:'lead_processed',data:{\n lead_id:r.lead_id,contact_id:r.contact_id,contact_created:r.contact_created,title_updated:r.title_updated,\n note_created:r.note_created,message_created:r.message_created,last_inbound_message_id:r.last_inbound_message?.activity_id||null,\n follow_up_reason:r.follow_up_reason,follow_up_task_id:r.follow_up_task_id,task_created:r.task_created}}));\nreturn [{json:{protocol_version:'1.0',run_id:c.run_id,status:'completed',\n final_answer:'Processed ten fictional leads, verified CRM records, and scheduled eligible follow-ups without duplicate writes.',\n artifacts:[{name:'lead-import-follow-up.json',media_type:'application/json',\n content:JSON.stringify({source_name:c.source.source_name,now:c.now,leads:rows})}],trace}}];"
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Prepare Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Leads": {
+      "main": [
+        [
+          {
+            "node": "Loop Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Leads": {
+      "main": [
+        [
+          {
+            "node": "Submit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Contact": {
+      "main": [
+        [
+          {
+            "node": "Plan Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Contact": {
+      "main": [
+        [
+          {
+            "node": "Resolve Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Contact": {
+      "main": [
+        [
+          {
+            "node": "Plan Job Title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Job Title": {
+      "main": [
+        [
+          {
+            "node": "Set Job Title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Job Title": {
+      "main": [
+        [
+          {
+            "node": "Read Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Contact": {
+      "main": [
+        [
+          {
+            "node": "Verify Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Contact": {
+      "main": [
+        [
+          {
+            "node": "Read Activities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Activities": {
+      "main": [
+        [
+          {
+            "node": "Plan Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Note": {
+      "main": [
+        [
+          {
+            "node": "Ensure Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Note": {
+      "main": [
+        [
+          {
+            "node": "Verify Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Note": {
+      "main": [
+        [
+          {
+            "node": "Plan Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Message": {
+      "main": [
+        [
+          {
+            "node": "Ensure Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Message": {
+      "main": [
+        [
+          {
+            "node": "Verify Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Message": {
+      "main": [
+        [
+          {
+            "node": "Read Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Messages": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Recency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Recency": {
+      "main": [
+        [
+          {
+            "node": "Read Current Activities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Current Activities": {
+      "main": [
+        [
+          {
+            "node": "Plan Follow Up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Follow Up": {
+      "main": [
+        [
+          {
+            "node": "Ensure Follow Up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Follow Up": {
+      "main": [
+        [
+          {
+            "node": "Read Final Activities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Final Activities": {
+      "main": [
+        [
+          {
+            "node": "Finalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Lead": {
+      "main": [
+        [
+          {
+            "node": "Loop Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

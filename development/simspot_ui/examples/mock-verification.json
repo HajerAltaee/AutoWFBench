@@ -1,0 +1,98 @@
+{
+  "date": "2026-10-13",
+  "platform": "Windows host; Docker Desktop Linux containers; n8n 2.42.3",
+  "scored": false,
+  "source_kind": "local mock file, not live Google Sheets",
+  "source_sha256": "9bdc0f846cef8ae147e1710a94ddafaab95a43a42020d7ca40264205b465433b",
+  "workflow_sha256": "15e9a38a50fd9d085e2a386b0aca19ca1aa2701f05ad79276418d143f3883384",
+  "sapiens": {
+    "connectivity_probe": "b7859c099e1c48c880fed7f16e55d489",
+    "chief_authoring_turn": "df8618f65a934d4aa9b28f9d65ea4b47",
+    "specialist_authoring_turn": "05d1b2bbc8c24371839d889a63181323",
+    "chief": "sapi_68886c03b567",
+    "specialist": "sapi_faebfd16556c",
+    "specialist_name": "N8nComposer",
+    "authoring_status": "completed with actual Chief-to-specialist delegation",
+    "chief_execution_turn": "d6bbc47d34864c9093c3cfd5d9d51995",
+    "first_execution_specialist_turn": "8deef61d4b604d7ca9c06ae496bdd9f5",
+    "first_execution_status": "failed before CRM execution: specialist default python lacked fastjsonschema",
+    "retry_chief_turn": "a19e52b746a743a0bfc65c9d2b6885a9",
+    "retry_specialist_turn": "17b579c80253434da79da159ab3831a4",
+    "retry_environment_change": "Pinned existing Windows Python 3.12 interpreter with the project dependency; no packages installed",
+    "retry_status": "Completed; specialist executed the command and parent independently inspected the saved CRM evidence"
+  },
+  "parent_transport_corrections": [
+    "Bound dynamic HTTP method to GET, POST or PATCH",
+    "Use literal sendBody true because n8n import omitted the JSON body with an expression"
+  ],
+  "runs": [
+    {
+      "id": "sapiens-mock-763c5ddeeab6",
+      "status": "failed before business writes: HTTP 413, missing JSON body"
+    },
+    {
+      "id": "sapiens-mock-e4197dc21b06",
+      "clock": "2026-10-13T07:27:08Z",
+      "cycles": 2,
+      "source_rows": 10,
+      "existing_matches": 2,
+      "new_contacts": 8,
+      "total_contacts": 14,
+      "follow_up_tasks": 6,
+      "recent_skipped": 3,
+      "no_message_skipped": 1,
+      "all_independent_checks_passed": true,
+      "restart_persistence_passed": true,
+      "repeat_state_identical": true
+    },
+    {
+      "id": "sapiens-mock-e16527c891fa",
+      "clock": "2026-10-13T09:00:00Z",
+      "cycles": 1,
+      "new_contacts": 0,
+      "follow_up_tasks": 6,
+      "exactly_48_hour_message_skipped": true,
+      "all_independent_checks_passed": true
+    },
+    {
+      "id": "sapiens-mock-865894078d71",
+      "executor": "N8nComposer, delegated by Chief",
+      "clock": "2026-10-13T10:50:30.705194Z",
+      "cycles": 1,
+      "new_contacts": 0,
+      "total_contacts": 14,
+      "new_follow_up_tasks": 1,
+      "new_follow_up_lead": "LEAD-006, Sofia",
+      "follow_up_tasks": 7,
+      "all_independent_checks_passed": true
+    }
+  ],
+  "tests_this_turn": {
+    "mock_leads_and_simspot_ui": 27,
+    "sapiens_composer_adapter": 13,
+    "sapiens_routines": 15,
+    "sapiens_windows": 8,
+    "all_passed": true,
+    "entire_repository_suite_rerun": false
+  },
+  "local_evidence_root": "runs/sapiens-mock-workspace",
+  "routine": {
+    "id": "routine_sch_00001",
+    "owner": "sapi_68886c03b567",
+    "creation_turn": "4fb473144b9a4c8bb42a15ad1233a524",
+    "frequency_minutes": 1440,
+    "paused": false,
+    "run_count_at_registration": 0,
+    "first_due_utc": "2026-10-14T10:52:15.208916Z",
+    "elapsed_24_hour_occurrence_verified": false,
+    "scope": "Local mock source only, persistent CRM, pinned existing Python, Chief delegates execution"
+  },
+  "evidence_files_per_run": ["source.json", "before.json", "summary.json", "cycle-1/submission.json", "cycle-1/after.json", "cycle-1/verification.json", "cycle-1/n8n/"],
+  "limits": [
+    "One Chief and one Composer specialist were demonstrated, not separate import and follow-up Sapis",
+    "Follow-up text is templated using CRM message and source context",
+    "No live Google Sheet reader, external email delivery, scored benchmark or UI-to-benchmark state adapter",
+    "Fixed-source oracle does not validate task cancellation after a new customer reply",
+    "Routine creation and a manually requested run do not prove an elapsed 24-hour scheduled occurrence"
+  ]
+}

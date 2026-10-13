@@ -84,12 +84,15 @@ first import those as inbound CRM messages and then determine 48-hour recency fr
 the CRM message endpoint. Internal notes and follow-up tasks cannot refresh that
 clock. The no-message row must be skipped rather than treated as overdue.
 
-This is a storage/API seam, **not yet a Google Sheets reader or a Sapiens Routine**.
+This is a storage/API seam, **not a Google Sheets reader**. The
+[mock-source exercise](examples/README.md#ten-lead-mock-source-exercise) now uses
+Chief's delegated n8n artifact to import the same ten rows from a local file and
+verify follow-ups, persistent state and idempotent replay.
 The Codex Google Drive connection does not grant the separate Sapiens runtime
 access to the Sheet. That runtime still needs a documented credentialed Sheets
 access path (or an authorized browser session) before a 24-hour unattended flow
 can be validated. A 24-hour schedule must be owned by Sapiens Routines; do not
-substitute a local timer or claim the current smoke workflow covers this case.
+substitute a local timer or claim a mock-source run proves live Sheet access.
 
 Five intended company associations are seeded (OrbitOps, Northstar, Harbor,
 MedAxis, Quantum). The captured real import instead autoassociated a contact with

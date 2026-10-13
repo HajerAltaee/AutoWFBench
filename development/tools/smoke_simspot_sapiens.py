@@ -33,10 +33,14 @@ def docker(*args):
     return subprocess.check_output(["docker", *args], text=True, encoding="utf-8", stderr=subprocess.STDOUT, timeout=60).strip()
 
 
+SAFE_METHOD = "={{ ['GET', 'POST', 'PATCH'].includes($json.method) ? $json.method : 'INVALID' }}"
+
+
 def check_structure(workflow):
     """Small development guard; production benchmark API validation is separate."""
     nodes = workflow.get("nodes", [])
-    allowed = {"manualTrigger": 1, "set": 3.4, "httpRequest": 4.2, "code": 2, "if": 2.2}
+    allowed = {"manualTrigger": 1, "set": 3.4, "httpRequest": 4.2, "code": 2, "if": 2.2,
+               "splitInBatches": 3}
     names = {node["name"] for node in nodes}
     if not {"Start", "Context", "Submit"} <= names or len(names) != len(nodes):
         raise ValueError("Expected unique Start, Context, Submit and business nodes")
@@ -51,7 +55,9 @@ def check_structure(workflow):
             raise ValueError("Unexpected code capability")
         if kind == "httpRequest":
             settings = node["parameters"]
-            if settings.get("method", "GET") not in ("GET", "POST", "PATCH"):
+            if not isinstance(settings.get("sendBody", False), bool):
+                raise ValueError("sendBody must be a literal boolean for n8n import")
+            if settings.get("method", "GET") not in ("GET", "POST", "PATCH", SAFE_METHOD):
                 raise ValueError("Unexpected HTTP method")
             if "environment.base_url" not in settings.get("url", "") or "/api/contacts" not in settings["url"]:
                 raise ValueError("HTTP must use the supplied SimSpot contacts URL")
