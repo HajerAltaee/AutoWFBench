@@ -6,7 +6,7 @@ import json
 import sqlite3
 import uuid
 
-from .contracts import activity, contact_changes, new_contact, InvalidInput
+from .contracts import activity, contact_changes, new_contact, InvalidInput, is_follow_up
 
 
 SEED_CONTACTS = (
@@ -113,6 +113,8 @@ class Store:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             record = self._contact(db, ident)
+            if kind == "task" and is_follow_up(values) and record.get("do_not_contact", False):
+                raise InvalidInput("Do not contact: follow-up tasks are blocked for this contact")
             key_field = "source_id" if kind == "message" else "idempotency_key" if kind == "task" else None
             if key_field and key_field in values:
                 for row in db.execute("SELECT id,created_at,payload FROM activities WHERE contact_id=? AND kind=?", (ident, kind)):
@@ -123,6 +125,11 @@ class Store:
                         if kind == "task" and any(previous.get(field) != value for field, value in values.items() if field != "include_company"):
                             raise InvalidInput("Idempotency key already refers to a different task")
                         return {"activity_id": row[0], "kind": kind, "created_at": row[1], **previous}
+            if kind == "task" and is_follow_up(values):
+                for row in db.execute("SELECT payload FROM activities WHERE contact_id=? AND kind='task'", (ident,)):
+                    previous = json.loads(row[0])
+                    if is_follow_up(previous) and previous.get("status", "Not started") not in ("Completed", "Cancelled"):
+                        raise InvalidInput("A pending follow-up already exists for this contact; review it before creating another")
             include_company = values.pop("include_company", kind != "message")
             values["contact_id"] = ident
             if include_company and record["company_id"]:

@@ -54,8 +54,17 @@ function openForm(id) {
   const dialog = $(id), form = $("form", dialog);
   form.reset(); $(".form-error", dialog).textContent = "";
   form.dataset.contact = selected.contact_id;
+  if (id === "#task-dialog") {
+    let identity = $(".task-contact-identity", form);
+    if (!identity) {
+      identity = el("p", undefined, "task-contact-identity");
+      $(".form-body", form).prepend(identity);
+    }
+    identity.textContent = `Task for ${fullName(selected)} — ${selected.email} (${selected.contact_id})`;
+  }
   if (id === "#editor") {
     for (const field of ["first_name", "last_name", "job_title", "email"]) form.elements[field].value = selected[field];
+    form.elements.do_not_contact.checked = selected.do_not_contact === true;
   } else if (id === "#note-dialog") {
     $(".company-label", form).textContent = selected.company_name;
     $(".association", form).hidden = !selected.company_id;
@@ -72,7 +81,18 @@ function openForm(id) {
     form.elements.due_date.value = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,"0")}-${String(day.getDate()).padStart(2,"0")}`;
     $("button[type=submit]", form).disabled = true;
   }
+  if (id === "#task-dialog") updateTaskReview(form);
   dialog.showModal();
+}
+function updateTaskReview(form) {
+  let review = $(".task-review", form);
+  if (!review) {
+    review = el("p", undefined, "task-review");
+    review.setAttribute("role", "status");
+    $(".form-body", form).append(review);
+  }
+  const time = form.elements.due_time;
+  review.textContent = `Due: ${form.elements.due_date.value || "not set"} at ${time.validity.valid ? time.value : "invalid time — use 24-hour HH:MM"}. Customer follow-up: ${form.elements.follow_up.checked ? "Yes" : "No"}. Type: ${form.elements.task_type.value}. Priority: ${form.elements.priority.value}.`;
 }
 async function showContact(id, version) {
   const [contact, activities] = await Promise.all([api(`/api/contacts/${encodeURIComponent(id)}`), api(`/api/contacts/${encodeURIComponent(id)}/activities`)]);
@@ -92,6 +112,7 @@ async function showContact(id, version) {
   stage.value = contact.lifecycle_stage;
   stage.addEventListener("change", async () => { stage.disabled = true; try { await api(`/api/contacts/${contact.contact_id}`, "PATCH", {lifecycle_stage: stage.value}); status("Lifecycle Stage saved."); await render(); } catch (error) { status(error.message); stage.value = contact.lifecycle_stage; stage.disabled = false; } });
   properties.append(append(el("div", undefined, "property"), el("label", "Lifecycle Stage"), stage)); identity.append(properties);
+  properties.append(append(el("div", undefined, "property"), el("label", "Contact preference"), el("span", contact.do_not_contact ? "Do not contact" : "Do not contact: not marked")));
   const center = el("section", undefined, "center"), tabs = el("div", undefined, "tabs"), feed = el("div");
   const showFeed = mode => {
     feed.replaceChildren();
@@ -103,8 +124,9 @@ async function showContact(id, version) {
       const card = el("article", undefined, "card activity");
       const heading = item.kind === "note" ? "Note" : item.kind === "message" ? "Customer message" : item.title;
       const timestamp = item.kind === "message" ? item.received_at : item.created_at;
-      card.append(el("h3", heading), el("small", new Date(timestamp).toLocaleString()));
+      card.append(el("h3", heading), el("small", `${new Date(timestamp).toLocaleString()} (${new Date(timestamp).toISOString()})`));
       if (item.kind === "task") card.append(el("p", `${item.task_type} · ${item.status} · ${item.priority} priority`), el("p", `Activity date: ${item.due_date} ${item.due_time} · ${item.assigned_to}`));
+      if (item.kind === "task" && item.follow_up) card.append(el("p", "Customer follow-up", "badge"));
       const associated = item.company_id ? `2 records: ${fullName(contact)} and ${contact.company_name}` : `1 record: ${fullName(contact)}`;
       card.append(el("p", item.body), el("small", `Associated with ${associated}`)); feed.append(card);
     }
@@ -157,6 +179,9 @@ for (const id of ["#note-form", "#task-form"]) {
   const form = $(id);
   form.elements.include_company.addEventListener("change", () => updateFormAssociations(form));
 }
+for (const eventName of ["input", "change"]) {
+  $("#task-form").addEventListener(eventName, event => updateTaskReview(event.currentTarget));
+}
 for (const [id, suffix, method] of [["#identity-form", "", "PATCH"], ["#note-form", "/notes", "POST"], ["#task-form", "/tasks", "POST"]]) {
   const form = $(id), submit = $("button[type=submit]", form);
   form.addEventListener("input", () => { submit.disabled = !form.checkValidity() || (id === "#note-form" && !form.elements.body.value.trim()) || (id === "#task-form" && !form.elements.title.value.trim()); });
@@ -165,6 +190,8 @@ for (const [id, suffix, method] of [["#identity-form", "", "PATCH"], ["#note-for
     try {
       const payload = Object.fromEntries(new FormData(form));
       if (id !== "#identity-form") payload.include_company = form.elements.include_company.checked;
+      if (id === "#identity-form") payload.do_not_contact = form.elements.do_not_contact.checked;
+      if (id === "#task-form") payload.follow_up = form.elements.follow_up.checked;
       await api(`/api/contacts/${encodeURIComponent(form.dataset.contact)}${suffix}`, method, payload);
       form.closest("dialog").close(); status(suffix === "/notes" ? "Note created and saved." : suffix === "/tasks" ? "Task created and saved." : "Contact saved."); await render();
     } catch (error) { $(".form-error", form).textContent = error.message; }

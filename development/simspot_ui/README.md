@@ -38,6 +38,84 @@ activities. Do not place real customer data in this experimental workspace.
 8. Inspect Activities, refresh, or restart the process and read back saved values.
    The other Aisha record remains separate and unchanged.
 
+### Follow-up assistant safeguards
+
+The contact editor includes `Do not contact`, also displayed in Key information.
+The optional boolean `do_not_contact` property persists through the existing
+contact PATCH operation. Older records without this property display as not marked;
+that does not establish affirmative consent.
+
+The task form includes `Customer follow-up` (boolean `follow_up` in the task API).
+Within the same SQLite write transaction, follow-up creation is rejected for a
+do-not-contact record or when that contact already has a pending follow-up.
+Legacy tasks are also recognized by a `follow-up:` idempotency key or a title
+beginning with `Follow up`, `Follow-up`, or `Followup`. Arbitrarily named older
+tasks without a flag/key cannot reliably be classified; the agent must inspect
+their visible context. This is not a complete consent or task-lifecycle system.
+The UI does not yet implement task completion or cancellation.
+
+An exact retry with the same task key and payload retains the existing API
+idempotency behavior, subject to the current do-not-contact preference. A different
+key or wording cannot bypass an existing recognized pending follow-up. Ordinary
+internal tasks and notes remain available. Task creation does not send messages.
+
+The agent, rather than a new hard-coded execution engine, decides eligibility
+from the latest inbound customer message and creates personalized task content.
+The fixture supports a supplied evaluation clock; the saved Sapiens routine
+captures the actual occurrence time in UTC and Asia/Dubai. Both skip missing
+timestamps for review and treat exactly 48 hours as not overdue. Activity timestamps show ISO
+UTC alongside local time to make these decisions inspectable.
+
+The task dialog displays the contact name, email and record ID so a managed UI
+agent can verify identity without dismissing the form. Time uses a validated
+24-hour `HH:MM` text field. A live textual summary exposes date, time, follow-up
+selection, type and priority for readback before a guarded Create action.
+
+### Verified Sapiens routine demonstration (2026-10-14)
+
+Chief created the dedicated `SimSpotFollowUp` Sapi, which owns
+`routine_sch_00002`. Managed Blindly UI runs created and reload-verified
+personalized tasks for Ibrahim and, after a controlled fictional customer-message
+fixture change, Jonah. A full manual repeat left CRM state unchanged. A later
+automatically scheduled occurrence reviewed all ten leads: four pending follow-ups
+and four recent messages skipped, one do-not-contact skipped, and one missing
+customer message required review. Its entire before/after CRM snapshot was equal.
+The message fixture was operator API setup; Sapiens CRM decisions and task writes
+used the UI. Independent verification used read-only API snapshots and actual
+browser screenshots, not Sapiens screenshot tooling.
+
+Both existing routines were left paused at 1440 minutes. The specialist's two
+automatic admissions include an earlier incomplete occurrence blocked by lost
+foreground and one complete occurrence. Registration, admission and completed
+business execution are separate claims. This proves the bounded demonstration,
+not reliable unattended Windows execution. See
+[`simspot-followup-assistant-qa.json`](../results/simspot-followup-assistant-qa.json)
+for run IDs, timings, unchanged-state checks and preserved earlier failures.
+
+For a supervised UI run, keep Chrome running outside the Sapiens model process,
+freshly verify the target URL and identity, and avoid competing desktop input.
+Blindly requests normal Windows foreground activation and fails closed when the
+target PID is not foreground. Do not bypass that guard, reuse old UI paths, or
+automatically retry an uncertain write. The cause of past focus loss remains
+unconfirmed; the source Unicode-output fix does not solve foreground activation.
+
+Prepare a new isolated demonstration with the existing ten fictional lead
+identities (two match the six base contacts, giving fourteen total records):
+
+```powershell
+python -m development.tools.prepare_simspot_followup_demo --output runs/followup-demo
+python -X utf8 -m development.simspot_ui.server --port 8766 --store runs/followup-demo/demo.sqlite3
+```
+
+The preparation command refuses to overwrite an existing demo database. It writes
+fixtures directly through the local Store, **not through Sapiens or UI actions**.
+Its roster contains identities and URLs, not precomputed agent decisions.
+Use the fixed evaluation clock `2026-10-14T10:00:00Z` without changing system time.
+Cases include one overdue lead, recent messages, an exact 48-hour boundary, a
+do-not-contact record, an existing unkeyed follow-up, and missing messages.
+Retain `baseline.json`, then verify the agent's task changes independently. The
+fixture command does not register a routine, send messages, or run a benchmark.
+
 `replay-example.json` records one deterministic local edit/note/task sequence.
 It is a test fixture, not a claim that the sequence has been replayed in HubSpot.
 

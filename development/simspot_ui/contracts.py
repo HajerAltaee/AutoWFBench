@@ -24,10 +24,14 @@ def text(value, label, limit=200, required=True):
 
 
 def contact_changes(payload):
-    fields(payload, ("first_name", "last_name", "job_title", "email", "lifecycle_stage"))
+    fields(payload, ("first_name", "last_name", "job_title", "email", "lifecycle_stage", "do_not_contact"))
     if not payload:
         raise InvalidInput("Provide at least one change")
-    result = {key: text(value, key, required=key != "job_title") for key, value in payload.items()}
+    result = {key: text(value, key, required=key != "job_title") for key, value in payload.items() if key != "do_not_contact"}
+    if "do_not_contact" in payload:
+        if type(payload["do_not_contact"]) is not bool:
+            raise InvalidInput("do_not_contact must be a boolean")
+        result["do_not_contact"] = payload["do_not_contact"]
     if "email" in result:
         validate_email(result["email"])
     if "lifecycle_stage" in result and result["lifecycle_stage"] not in ("Lead", "Opportunity", "Customer"):
@@ -68,7 +72,7 @@ def activity(payload, kind):
         if not isinstance(include_company, bool):
             raise InvalidInput("include_company must be a boolean")
         return {"body": text(payload["body"], "Note", 10000), "include_company": include_company}
-    fields(payload, ("title", "body", "due_date", "due_time", "task_type", "priority", "include_company", "idempotency_key"), ("title", "due_date"))
+    fields(payload, ("title", "body", "due_date", "due_time", "task_type", "priority", "include_company", "idempotency_key", "follow_up"), ("title", "due_date"))
     if not isinstance(payload.get("include_company", True), bool):
         raise InvalidInput("include_company must be a boolean")
     result = {
@@ -83,6 +87,10 @@ def activity(payload, kind):
     }
     if "idempotency_key" in payload:
         result["idempotency_key"] = text(payload["idempotency_key"], "Idempotency key", 200)
+    if "follow_up" in payload:
+        if type(payload["follow_up"]) is not bool:
+            raise InvalidInput("follow_up must be a boolean")
+        result["follow_up"] = payload["follow_up"]
     try:
         if date.fromisoformat(result["due_date"]).isoformat() != result["due_date"]:
             raise ValueError()
@@ -94,3 +102,10 @@ def activity(payload, kind):
     if result["task_type"] not in ("To-do", "Call", "Email") or result["priority"] not in ("None", "Low", "Medium", "High"):
         raise InvalidInput("Unsupported task type or priority")
     return result
+
+
+def is_follow_up(task):
+    """Recognize explicit follow-ups and older tasks without a purpose flag."""
+    return (task.get("follow_up") is True
+            or task.get("idempotency_key", "").startswith("follow-up:")
+            or bool(re.match(r"^follow[ -]?up\b", task.get("title", ""), re.IGNORECASE)))

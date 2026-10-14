@@ -150,6 +150,54 @@ class SimSpotUIStateTests(unittest.TestCase):
                 self.store.create_activity("CONTACT-1001", "message", payload)
         self.assertEqual(self.store.activities("CONTACT-1001"), [])
 
+    def test_do_not_contact_persists_and_blocks_followups_only(self):
+        ident = "CONTACT-1001"
+        self.store.update(ident, {"do_not_contact": True})
+        self.assertTrue(Store(self.path).contact(ident)["do_not_contact"])
+        for payload in ({"title": "Discuss budget", "follow_up": True},
+                        {"title": "Follow up with Maya"},
+                        {"title": "Discuss budget", "idempotency_key": "follow-up:legacy"}):
+            with self.subTest(payload=payload), self.assertRaisesRegex(InvalidInput, "Do not contact"):
+                self.store.create_activity(ident, "task", {**payload, "due_date": "2026-10-14"})
+        self.assertEqual(self.store.activities(ident), [])
+        self.store.create_activity(ident, "note", {"body": "Internal review only"})
+        for invalid in ("false", 0, None):
+            with self.assertRaises(InvalidInput):
+                self.store.update(ident, {"do_not_contact": invalid})
+        self.assertTrue(self.store.contact(ident)["do_not_contact"])
+        self.store.update(ident, {"do_not_contact": False})
+        self.store.create_activity(ident, "task", {"title": "Follow up with Maya", "due_date": "2026-10-14"})
+
+    def test_pending_legacy_followup_blocks_different_message_and_title(self):
+        ident = "CONTACT-1001"
+        original = self.store.create_activity(ident, "task", {"title": "Follow up with Maya", "due_date": "2026-10-14"})
+        self.store.create_activity(ident, "message", {"source_id": "changed", "body": "New scope", "received_at": "2026-10-12T01:00:00Z"})
+        with self.assertRaisesRegex(InvalidInput, "pending follow-up"):
+            self.store.create_activity(ident, "task", {"title": "Discuss changed scope", "follow_up": True,
+                "due_date": "2026-10-15", "idempotency_key": "follow-up:changed-message"})
+        self.assertEqual([a for a in self.store.activities(ident) if a["kind"] == "task"], [original])
+
+    def test_concurrent_followups_admit_only_one_without_keys(self):
+        from concurrent.futures import ThreadPoolExecutor
+        barrier = threading.Barrier(2)
+        def create(title):
+            barrier.wait()
+            try:
+                self.store.create_activity("CONTACT-1001", "task", {"title": title, "follow_up": True, "due_date": "2026-10-14"})
+                return "created"
+            except InvalidInput:
+                return "blocked"
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(create, ["Clarify budget", "Discuss pilot"]))
+        self.assertCountEqual(results, ["created", "blocked"])
+        self.assertEqual(len(self.store.activities("CONTACT-1001")), 1)
+
+    def test_followup_flag_requires_boolean(self):
+        for invalid in ("false", 0, None):
+            with self.assertRaises(InvalidInput):
+                self.store.create_activity("CONTACT-1001", "task", {"title": "Review", "due_date": "2026-10-14", "follow_up": invalid})
+        self.assertEqual(self.store.activities("CONTACT-1001"), [])
+
     def test_user_text_is_data_and_client_has_no_html_injection_sink(self):
         malicious = '<img src=x onerror="alert(1)"><script>alert(2)</script>'
         self.store.update("CONTACT-1001", {"job_title": malicious})
@@ -197,6 +245,18 @@ class SimSpotUIHTTPTests(unittest.TestCase):
         self.assertEqual(status, 201)
         status, _, body = self.request("GET", "/api/contacts/CONTACT-3000/activities")
         self.assertEqual(json.loads(body)[0]["body"], "Persist me")
+
+    def test_http_preference_and_duplicate_followup_guards(self):
+        path = "/api/contacts/CONTACT-1001"
+        headers = self.good_headers()
+        self.assertEqual(self.request("PATCH", path, {"do_not_contact": True}, headers)[0], 200)
+        task = {"title": "Clarify budget", "due_date": "2026-10-14", "follow_up": True}
+        self.assertEqual(self.request("POST", path + "/tasks", task, headers)[0], 400)
+        self.assertTrue(json.loads(self.request("GET", path)[2])["do_not_contact"])
+        self.assertEqual(self.request("PATCH", path, {"do_not_contact": False}, headers)[0], 200)
+        self.assertEqual(self.request("POST", path + "/tasks", task, headers)[0], 201)
+        self.assertEqual(self.request("POST", path + "/tasks", {**task, "title": "Other follow-up"}, headers)[0], 400)
+        self.assertEqual(len(json.loads(self.request("GET", path + "/activities")[2])), 1)
 
     def test_http_create_update_and_readback(self):
         status, _, body = self.request("POST", "/api/contacts", {"email": "nora@example.com", "first_name": "Nora", "last_name": "Vale"}, self.good_headers())
