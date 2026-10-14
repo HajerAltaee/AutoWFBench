@@ -1,0 +1,141 @@
+{
+  "case_id": "simspot-windows-foreground-20261013",
+  "date": "2026-10-13",
+  "status": "ui_flow_verified_with_local_encoding_fix; background_activation_remains_open",
+  "scope": "Unscored Windows UI-only contact-edit smoke test",
+  "source_revisions": {
+    "AutoWFBench": "75d4c355eb2073b92c0e473293901cd035578528",
+    "sapiens4": "71e93cb3de00183c263ec440919b313cf92ed8af",
+    "blindly4": "1369de4cdb2893b16da23c16e5a03e2331aea916"
+  },
+  "target": {
+    "url": "http://127.0.0.1:8765/#contact/CONTACT-b236c8434bdb4f12abec8b1769c82be2",
+    "contact": "Sapiens Demo",
+    "email": "simspot.sapiens.live.20261013@example.com",
+    "before_job_title": "Automation test lead",
+    "requested_job_title": "UI-verified automation lead",
+    "data": "Fictional local UI workspace; separate from benchmark state"
+  },
+  "sapiens_attempt": {
+    "turn_id": "8f6c2af14f274956be7c8d1eff1f4fab",
+    "execution_session_id": "01a135c7-0541-7d51-9ddc-1176fe16a8bd",
+    "created_utc": "2026-10-13T14:59:23.117475Z",
+    "output_utc": "2026-10-13T15:05:50.593671Z",
+    "conversation_status": "done",
+    "execution_outcome": "Unresolved",
+    "ui_test_passed": false,
+    "failed_command": "python <sapiens-repo>/sapiens/computer/commands.py blindly activate --pid 17104",
+    "exit_code": 1,
+    "tool_error": {
+      "error": "Input blocked: the intended PID is not the foreground application",
+      "code": "accessibility_error"
+    },
+    "error_evidence": "Confirmed in the execution session's completed CommandExecution record, not just the final model reply",
+    "crm_changes_reported": false,
+    "stopped_before": "Observing the SimSpot URL, editing the contact, saving or checking persistence"
+  },
+  "direct_blindly_control": {
+    "operator": "Codex desktop agent invoking Blindly4 directly, not Sapiens4",
+    "result": "passed",
+    "steps": [
+      "Activate observed Chrome PID 17104",
+      "Observe target URL and fresh Edit control path",
+      "Press Edit and observe original Job Title",
+      "Set only Job Title to UI-verified automation lead",
+      "Press Save guarded by the expected field value",
+      "Observe updated title, press browser Reload, observe title again"
+    ],
+    "save_result": {"action": "AXPress", "ok": true, "verified": true},
+    "persisted_job_title": "UI-verified automation lead",
+    "api_or_database_writes_used_for_edit": false,
+    "screenshot_local_only": "runs/sapiens-live-demo-20261013/06-blindly-ui-result.jpg"
+  },
+  "diagnosis": {
+    "scope": "Historical foreground-failure diagnosis; see verified_run_20261014 for the subsequent encoding fix and successful UI test",
+    "confirmed_failure_point": "Blindly4 foreground-PID verification during activation",
+    "source": "blindly4/windows/Input/Native.cs: Activate calls SetForegroundWindow, waits for the foreground PID, then calls RequireForeground",
+    "underlying_cause": "Unconfirmed; no evidence yet distinguishes a denied foreground switch from focus contention or other launch-context differences",
+    "reproduction_count": 2,
+    "reproducibility": "Foreground activation error observed in two managed Sapiens attempts; intermittent/context-dependent behavior remains possible because a foreground-prepared attempt passed that boundary and a direct invocation succeeded",
+    "not_established_by_initial_attempt": [
+      "A general Chrome permission denial",
+      "A SimSpot application defect",
+      "A Sapiens wrapper defect",
+      "Successful Sapiens-controlled UI editing"
+    ]
+  },
+  "foreground_retest": {
+    "turn_id": "9f90114fae474f8db59cd035c1d53b92",
+    "execution_session_id": "01a13660-3723-7f60-8956-87f97025bdaf",
+    "result": "Unresolved",
+    "chrome_frontmost_observed_by_sapiens": true,
+    "failed_command": "python <sapiens-repo>/sapiens/computer/commands.py blindly find --pid 17104 --value 127.0.0.1:8765 --depth 12 --limit 10",
+    "tool_error": "'charmap' codec can't encode character '\\u25cf' in position 839: character maps to <undefined>",
+    "exit_code": 1,
+    "error_evidence": "Confirmed in the execution session's completed CommandExecution record",
+    "edit_or_save_attempted": false,
+    "diagnostic": "The local Python stdout defaults to cp1252; the same read through commands.py with -X utf8 and the configured binary override returned valid Unicode UI data successfully. This diagnostic was outside the managed Sapi workspace and alone does not prove end-to-end success."
+  },
+  "utf8_retest": {
+    "turn_id": "573eec2ebd4747eab2a6d0206bfb0553",
+    "execution_session_id": "01a13689-7572-7962-82d7-84a94e40e161",
+    "result": "Unresolved",
+    "requested_job_title": "Sapiens UI-verified lead",
+    "launch_adjustment": "Use python -X utf8 for the existing managed computer wrapper; no source or security changes",
+    "foreground_observation": "Sapiens observed ChatGPT frontmost and Chrome not frontmost; why focus changed is unconfirmed",
+    "failed_command": "python -X utf8 <sapiens-repo>/sapiens/computer/commands.py blindly activate --pid 17104",
+    "tool_error": {"error": "Input blocked: the intended PID is not the foreground application", "code": "accessibility_error"},
+    "exit_code": 1,
+    "edit_or_save_attempted": false,
+    "independent_after_read": "Direct read-only Blindly observation still shows UI-verified automation lead, not the newly requested title",
+    "utf8_end_to_end_result": "Not established; stopped at activation before the previously failing Unicode read"
+  },
+  "verified_run_20261014": {
+    "turn_id": "680e344421ea427fb4833839f4b82cf0",
+    "execution_session_id": "01a1393f-5ab8-77b0-a27f-f35dc2ec167f",
+    "result": "Completed",
+    "operator": "Sapiens Chief using its managed Blindly4 wrapper",
+    "source_fix": "sapiens4-latest/sapiens/computer/commands.py configures CLI stdout and stderr as UTF-8",
+    "source_fix_pr": "https://github.com/aleski-green/sapiens4/pull/28",
+    "source_fix_commit": "7b894a5d98fcd633293ff6d647f539a9aba59761",
+    "starting_method": "Sapiens invoked the supported blindly open --url command, then observed foreground Chrome and verified the URL/contact",
+    "before_job_title": "UI-verified automation lead",
+    "after_job_title": "Sapiens UI-verified lead",
+    "guarded_save": {"action": "AXPress", "ok": true, "verified": true},
+    "browser_reload": {"action": "AXPress", "ok": true},
+    "post_reload_evidence": "Sapiens find returned two AXStaticText matches with the new title; subsequent UI reads verified contact identity and URL",
+    "independent_check": "After the original Chrome process closed, Codex reopened the contact and verified the new title using Blindly4 and a native screenshot",
+    "crm_api_or_database_writes": false,
+    "guards_disabled": false,
+    "recoverable_cli_error": "Sapiens initially sent blindly read, which is not a Blindly verb; it corrected this to the documented wrapper read command before editing",
+    "screenshot_local_only": "runs/sapiens-ui-fix-20261014/sapiens-ui-verified.jpg",
+    "limits": [
+      "One UI edit/save/reload scenario, not a full lead-import/follow-up flow or scored benchmark",
+      "Generic background activation was not fixed or reclassified as safe",
+      "The browser was initially not running and disappeared when the model run ended; this is consistent with the existing Windows process-job cleanup, not a proven standalone Chrome crash diagnosis",
+      "The local source setup was patched; a separate packaged Sapiens4 executable was not updated"
+    ],
+    "validation": {
+      "encoding_regressions": "4 passed; 3 failed before the patch under forced cp1252 output",
+      "windows_tests": "8 passed",
+      "computer_recovery_tests": "8 passed",
+      "blindly_permission_free_tests": "54 passed"
+    }
+  },
+  "original_follow_up_plan_20261013": [
+    "Use a disposable fictional contact or explicitly reset its job title through the UI; the original demo now already has the requested title",
+    "Ensure no competing automation; record Chrome PID and foreground state from fresh Blindly observations",
+    "Run the same bounded UI objective through Sapiens' managed wrapper with Chrome already foreground",
+    "Separately test background-to-foreground activation and record the tool output",
+    "Keep foreground safety guards intact; stop on blocked input",
+    "Require Sapiens-observed URL, edit, save and post-reload readback before marking the case passed"
+  ],
+  "safety": {
+    "new_model_runs_for_report": 0,
+    "subsequent_user_requested_retest_submissions": 2,
+    "user_requested_source_fix_verification_submissions_20261014": 1,
+    "scored_benchmarks_run": false,
+    "security_settings_changed": false,
+    "raw_session_logs_published": false
+  }
+}

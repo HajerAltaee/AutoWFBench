@@ -126,6 +126,135 @@ Portable evidence metadata is in `development/results/sapiens-composer-smoke.jso
 The public prompts, receipt, candidate and full local evidence remain under the
 ignored `runs/sapiens-composer-cli-20261012/` directory on the test machine.
 
+## Windows UI QA: foreground activation, 2026-10-13
+
+This is a separate, unscored browser UI test against the local SimSpot UI database.
+It does not validate the benchmark runner or a complete Sapiens-controlled flow.
+Sanitized evidence and the follow-up checklist are recorded in
+`development/results/sapiens-blindly-ui-qa.json`.
+
+### Observed failure through Sapiens
+
+Chief was asked to use its managed Blindly4 wrapper to edit only the fictional
+Sapiens Demo contact's Job Title, save it and verify persistence after refresh.
+The execution session confirms that `blindly activate --pid 17104`, invoked through
+`sapiens/computer/commands.py`, exited 1 with:
+
+```json
+{"error":"Input blocked: the intended PID is not the foreground application","code":"accessibility_error"}
+```
+
+The turn's conversation status is `done`, but its execution outcome is
+`Unresolved`: Sapiens reported stopping before observing the SimSpot URL or making
+CRM changes. A completed conversation must not be counted as a passed UI test.
+
+Blindly4's `windows/Input/Native.cs` attempts `SetForegroundWindow`, waits for the
+target foreground PID, and fails closed if it does not match. This locates the
+failure at foreground activation; it does not establish a general Chrome
+permission problem, a SimSpot defect, or why activation failed on this occasion.
+
+### Successful direct control
+
+In a later test, the Codex desktop agent called the same configured Blindly4 build
+directly, outside Sapiens. Chrome activation, Edit, changing Job Title from
+`Automation test lead` to `UI-verified automation lead`, guarded Save, and browser
+Reload all succeeded. Fresh accessibility observations confirmed the updated title
+after reload. No API or database write was used for this edit.
+
+The local screenshot is
+`runs/sapiens-live-demo-20261013/06-blindly-ui-result.jpg`. It is not committed; raw
+provider logs and unrelated browser information should not be published as QA
+evidence. The direct run had a different foreground/tab context, so it is not a
+controlled reproduction or proof that the Sapiens path now works.
+
+### Follow-up reproduction and acceptance
+
+1. Use a disposable fictional contact with a known initial title, or explicitly
+   reset the demo title through the UI. It already contains the successful edit.
+2. Confirm no competing automation; freshly observe Chrome's PID and foreground
+   state. Never reuse the historical PID or accessibility paths blindly.
+3. Submit the bounded edit/save/reload objective through Sapiens with Chrome
+   already foreground, retaining the managed-wrapper command and output evidence.
+4. Separately test background-to-foreground activation to isolate that boundary.
+   Do not disable guards, change security settings or substitute API writes.
+5. Count success only when Sapiens observes the correct URL and contact, edits and
+   saves the intended field, and observes the new value after reload. On a blocked
+   action, stop and record it as unresolved.
+
+### Follow-up results, same day
+
+Two user-requested, unscored Sapiens retests were run after the initial report:
+
+- Turn `9f90114fae474f8db59cd035c1d53b92`: Chrome was prepared in the foreground,
+  and Sapiens independently confirmed that state. Its managed `find` command then
+  failed while printing a Unicode UI label: `'charmap' codec can't encode character
+  '\u25cf' in position 839: character maps to <undefined>`. The execution log
+  confirms exit 1; no edit or Save was attempted.
+- The diagnostic Python process reported stdout encoding `cp1252`. The same
+  read-only wrapper command with `python -X utf8` and the configured Blindly binary
+  returned the URL and Unicode UI labels successfully. This was an output-encoding
+  adjustment, not a source change or a safety-guard bypass. The diagnostic was
+  outside the managed workspace and is not an end-to-end Sapiens result.
+- Turn `573eec2ebd4747eab2a6d0206bfb0553`: Sapiens used `python -X utf8`, but its
+  fresh observation found ChatGPT foreground and Chrome background. Managed
+  activation failed again with the original foreground-PID error. The reason for
+  that foreground state is unconfirmed. It stopped before editing or testing the
+  previously failing Unicode read.
+- Independent read-only Blindly inspection still showed `UI-verified automation
+  lead`, not the requested new value `Sapiens UI-verified lead`.
+
+The foreground failure now has two recorded managed occurrences, but the reason
+Windows did not switch focus remains unconfirmed. The Unicode diagnostic passed;
+neither retest completed the UI workflow. No CRM writes, source fixes, security
+changes or scored benchmarks were made during these retests. Further model retries
+were stopped to conserve usage. Next validation needs Chrome kept foreground for
+the entire UTF-8-mode run; background activation remains a separate open QA case.
+
+### Verified Sapiens-controlled UI run, 2026-10-14
+
+The local Sapiens source helper now explicitly configures stdout and stderr as
+UTF-8 at its CLI entrypoint. Four regression tests exercise the real Python
+entrypoint under forced `cp1252:strict` output with mocked desktop results; three
+reproduced the original failure before the change, and all four now pass. The eight
+Windows tests, eight computer-recovery tests, and 54 permission-free Blindly checks
+also pass. Foreground validation and guarded-save checks were not changed.
+
+After restarting the existing source host and SimSpot with their original data
+directories and the documented Blindly binary override, Chief completed turn
+`680e344421ea427fb4833839f4b82cf0` through its managed UI wrapper:
+
+1. Opened the task's exact local URL with `blindly open --url`, then freshly
+   verified Chrome's foreground PID, URL and the fictional contact identity.
+2. Observed `UI-verified automation lead`, opened Edit, and changed only Job Title
+   to `Sapiens UI-verified lead`.
+3. Used an exact field-value guard for Save (`ok: true`, `verified: true`).
+4. Pressed Chrome's Reload control and read back the new title on the same contact.
+
+The provider execution log confirms the actual UI commands and returned values,
+not just a model success claim. One initial `blindly read` syntax error was corrected
+to the documented wrapper `read` command before editing. No CRM API/database writes,
+scored benchmarks or security changes were used. This is the first verified
+**Sapiens-controlled** edit/save/reload result, distinct from the earlier direct
+Codex-to-Blindly control.
+
+The new Chrome process disappeared at the end of the model run. This is consistent
+with the existing Windows process-job cleanup in `sapiens/runtime/codex.py` and
+`sapiens/runtime/windows.py`; no process-lifetime safeguards were removed. Reopening
+the contact independently through Blindly confirmed the saved title again. A native
+screenshot is retained locally at
+`runs/sapiens-ui-fix-20261014/sapiens-ui-verified.jpg`. For subsequent tests, leave an
+already-running Chrome open before submitting the request, and avoid competing
+desktop input.
+
+This verifies one local UI scenario. It does not prove that arbitrary background
+foreground-switch requests now work, that the complete import/follow-up flow passes
+through UI, or that a separately installed Sapiens4 desktop package contains the
+source fix. The local Sapiens source change and its tests must be reviewed in that
+repository; this AutoWFBench report alone does not distribute the fix.
+
+Companion fix: [Sapiens4 PR #28](https://github.com/aleski-green/sapiens4/pull/28),
+commit `7b894a5d98fcd633293ff6d647f539a9aba59761`.
+
 ## Earlier Windows verification
 
 - Sapiens Routine contract suite: 15 tests passed.
